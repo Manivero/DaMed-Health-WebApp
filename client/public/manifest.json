@@ -1,0 +1,13 @@
+{
+  "name": "DamuMed — Онлайн медицина",
+  "short_name": "DamuMed",
+  "description": "Запись к врачу онлайн в Казахстане",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#091829",
+  "theme_color": "#00C9A7",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
