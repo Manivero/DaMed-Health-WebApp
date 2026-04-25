@@ -1,6 +1,6 @@
 {
-  "name": "DamuMed — Онлайн медицина",
-  "short_name": "DamuMed",
+  "name": "DaMed — Онлайн медицина",
+  "short_name": "DaMed",
   "description": "Запись к врачу онлайн в Казахстане",
   "start_url": "/",
   "display": "standalone",
