@@ -1,0 +1,275 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "all": "All",
+    "noResults": "No results found",
+    "or": "or"
+  },
+
+  "nav": {
+    "home": "Home",
+    "doctors": "Doctors",
+    "appointments": "My Appointments",
+    "medicalCard": "Medical Card",
+    "aiChat": "AI Assistant",
+    "profile": "Profile",
+    "admin": "Admin Panel",
+    "login": "Log in",
+    "register": "Sign up",
+    "logout": "Log out"
+  },
+
+  "home": {
+    "hero": {
+      "title": "Next-generation online medicine",
+      "subtitle": "Book appointments with Kazakhstan's best doctors without queues or phone calls",
+      "cta": "Find a Doctor",
+      "ctaSecondary": "Learn More"
+    },
+    "stats": {
+      "doctors": "Doctors",
+      "patients": "Patients",
+      "clinics": "Clinics",
+      "rating": "Average Rating"
+    },
+    "features": {
+      "title": "Why DaMed?",
+      "online": {
+        "title": "Online Booking",
+        "desc": "Book in 2 minutes, any time of day"
+      },
+      "video": {
+        "title": "Video Consultation",
+        "desc": "Talk to your doctor from home"
+      },
+      "ai": {
+        "title": "AI Assistant",
+        "desc": "Primary symptom analysis powered by artificial intelligence"
+      },
+      "records": {
+        "title": "Medical Card",
+        "desc": "All your documents and tests in one place"
+      }
+    }
+  },
+
+  "doctors": {
+    "title": "Doctor Directory",
+    "searchPlaceholder": "Doctor name or speciality...",
+    "filters": {
+      "speciality": "Speciality",
+      "city": "City",
+      "price": "Consultation fee",
+      "rating": "Rating"
+    },
+    "sort": {
+      "rating": "By rating",
+      "price_asc": "Cheapest first",
+      "price_desc": "Most expensive",
+      "experience": "By experience"
+    },
+    "card": {
+      "experience": "years experience",
+      "reviews": "reviews",
+      "price": "From",
+      "bookBtn": "Book",
+      "profileBtn": "Profile",
+      "online": "Online",
+      "offline": "In-person",
+      "favorite": "Save",
+      "unfavorite": "Unsave"
+    },
+    "profile": {
+      "about": "About",
+      "education": "Education",
+      "services": "Services & Pricing",
+      "reviews": "Reviews",
+      "schedule": "Schedule"
+    }
+  },
+
+  "appointment": {
+    "title": "Book an Appointment",
+    "selectDate": "Select date",
+    "selectTime": "Select time",
+    "type": {
+      "label": "Appointment type",
+      "online": "Online",
+      "offline": "In-person"
+    },
+    "complaint": "Describe your symptoms",
+    "complaintPlaceholder": "Describe your symptoms...",
+    "confirm": "Confirm Booking",
+    "success": "Successfully booked!",
+    "successDesc": "Appointment details have been sent to your email",
+    "cancel": "Cancel appointment",
+    "cancelConfirm": "Are you sure you want to cancel this appointment?",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "slotBooked": "Slot unavailable",
+    "noSlots": "No available slots for this day",
+    "past": "Past",
+    "upcoming": "Upcoming"
+  },
+
+  "auth": {
+    "login": {
+      "title": "Log in to your account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Sign up"
+    },
+    "register": {
+      "title": "Create an account",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "password": "Password",
+      "passwordConfirm": "Confirm password",
+      "submit": "Sign up",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "agree": "I agree to the",
+      "terms": "terms of service"
+    },
+    "errors": {
+      "invalidEmail": "Invalid email address",
+      "shortPassword": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "emailTaken": "This email is already registered",
+      "wrongCredentials": "Invalid email or password",
+      "serverError": "Server error, please try again later"
+    }
+  },
+
+  "aiChat": {
+    "title": "AI Assistant",
+    "subtitle": "Describe your symptoms — I'll help you figure it out",
+    "disclaimer": "The AI assistant does not provide diagnoses. Please consult a doctor for an accurate diagnosis.",
+    "placeholder": "Type your question...",
+    "send": "Send",
+    "thinking": "Thinking...",
+    "newChat": "New chat",
+    "suggestDoctor": "Find a doctor",
+    "suggestions": {
+      "title": "Common questions",
+      "q1": "How to get rid of a headache?",
+      "q2": "Temperature 37.5 — what should I do?",
+      "q3": "How to boost immunity?",
+      "q4": "Back pain — which doctor should I see?"
+    }
+  },
+
+  "medicalCard": {
+    "title": "Medical Card",
+    "tabs": {
+      "documents": "Documents",
+      "analysis": "Test Results",
+      "prescriptions": "Prescriptions",
+      "history": "Medical History"
+    },
+    "upload": {
+      "title": "Upload Document",
+      "drag": "Drag file here",
+      "or": "or",
+      "browse": "Browse files",
+      "formats": "PDF, JPG, PNG up to 10 MB",
+      "success": "File uploaded",
+      "error": "Upload failed"
+    },
+    "empty": "No documents yet"
+  },
+
+  "admin": {
+    "title": "Admin Panel",
+    "stats": {
+      "totalDoctors": "Doctors",
+      "totalPatients": "Patients",
+      "todayAppointments": "Today's Appointments",
+      "revenue": "Revenue"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "doctors": "Doctors",
+      "appointments": "Appointments",
+      "users": "Users"
+    },
+    "actions": {
+      "addDoctor": "Add Doctor",
+      "edit": "Edit",
+      "delete": "Delete",
+      "block": "Block",
+      "unblock": "Unblock"
+    }
+  },
+
+  "payment": {
+    "title": "Payment",
+    "amount": "Amount due",
+    "method": "Payment method",
+    "card": "Credit / Debit card",
+    "submit": "Pay now",
+    "success": "Payment successful",
+    "failed": "Payment failed",
+    "currency": "₸"
+  },
+
+  "video": {
+    "title": "Video Consultation",
+    "connecting": "Connecting...",
+    "waitingDoctor": "Waiting for the doctor...",
+    "controls": {
+      "mic": "Microphone",
+      "camera": "Camera",
+      "screen": "Screen share",
+      "end": "End call"
+    },
+    "ended": "Consultation ended",
+    "duration": "Duration"
+  },
+
+  "profile": {
+    "title": "Profile",
+    "editBtn": "Edit",
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "birthdate": "Date of birth",
+      "gender": "Gender",
+      "city": "City",
+      "bloodType": "Blood type",
+      "allergies": "Allergies"
+    },
+    "gender": {
+      "male": "Male",
+      "female": "Female"
+    }
+  },
+
+  "errors": {
+    "404": "Page not found",
+    "500": "Server error",
+    "network": "No internet connection",
+    "goHome": "Go Home"
+  }
+}
