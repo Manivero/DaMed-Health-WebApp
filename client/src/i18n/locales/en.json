@@ -16,7 +16,6 @@
     "noResults": "No results found",
     "or": "or"
   },
-
   "nav": {
     "home": "Home",
     "doctors": "Doctors",
@@ -27,9 +26,10 @@
     "admin": "Admin Panel",
     "login": "Log in",
     "register": "Sign up",
-    "logout": "Log out"
+    "logout": "Log out",
+    "notifications": "Notifications",
+    "favorites": "Favourites"
   },
-
   "home": {
     "hero": {
       "title": "Next-generation online medicine",
@@ -63,7 +63,6 @@
       }
     }
   },
-
   "doctors": {
     "title": "Doctor Directory",
     "searchPlaceholder": "Doctor name or speciality...",
@@ -98,7 +97,6 @@
       "schedule": "Schedule"
     }
   },
-
   "appointment": {
     "title": "Book an Appointment",
     "selectDate": "Select date",
@@ -126,7 +124,6 @@
     "past": "Past",
     "upcoming": "Upcoming"
   },
-
   "auth": {
     "login": {
       "title": "Log in to your account",
@@ -160,7 +157,6 @@
       "serverError": "Server error, please try again later"
     }
   },
-
   "aiChat": {
     "title": "AI Assistant",
     "subtitle": "Describe your symptoms — I'll help you figure it out",
@@ -178,7 +174,6 @@
       "q4": "Back pain — which doctor should I see?"
     }
   },
-
   "medicalCard": {
     "title": "Medical Card",
     "tabs": {
@@ -198,7 +193,6 @@
     },
     "empty": "No documents yet"
   },
-
   "admin": {
     "title": "Admin Panel",
     "stats": {
@@ -221,7 +215,6 @@
       "unblock": "Unblock"
     }
   },
-
   "payment": {
     "title": "Payment",
     "amount": "Amount due",
@@ -232,7 +225,6 @@
     "failed": "Payment failed",
     "currency": "₸"
   },
-
   "video": {
     "title": "Video Consultation",
     "connecting": "Connecting...",
@@ -246,7 +238,6 @@
     "ended": "Consultation ended",
     "duration": "Duration"
   },
-
   "profile": {
     "title": "Profile",
     "editBtn": "Edit",
@@ -265,7 +256,6 @@
       "female": "Female"
     }
   },
-
   "errors": {
     "404": "Page not found",
     "500": "Server error",
