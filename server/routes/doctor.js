@@ -3,26 +3,36 @@ const { query } = require("express-validator");
 const Doctor = require("../models/Doctor");
 const validate = require("../middleware/validate");
 
+// Экранирует спецсимволы regex — защита от ReDoS атаки
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // GET /api/doctors?page=1&limit=10&specialty=Кардиолог&search=Иван
 router.get(
   "/",
   [
     query("page").optional().isInt({ min: 1 }).toInt(),
     query("limit").optional().isInt({ min: 1, max: 50 }).toInt(),
+    query("search").optional().isString().trim().isLength({ max: 100 }),
+    query("specialty").optional().isString().trim().isLength({ max: 100 }),
   ],
   validate,
   async (req, res, next) => {
     try {
-      const page = req.query.page || 1;
+      const page  = req.query.page  || 1;
       const limit = req.query.limit || 20;
-      const skip = (page - 1) * limit;
+      const skip  = (page - 1) * limit;
 
       const filter = {};
-      if (req.query.specialty) filter.specialty = req.query.specialty;
+
+      if (req.query.specialty) {
+        filter.specialty = { $regex: escapeRegex(req.query.specialty), $options: "i" };
+      }
+
       if (req.query.search) {
+        const safe = escapeRegex(req.query.search);
         filter.$or = [
-          { name: { $regex: req.query.search, $options: "i" } },
-          { specialty: { $regex: req.query.search, $options: "i" } },
+          { name:      { $regex: safe, $options: "i" } },
+          { specialty: { $regex: safe, $options: "i" } },
         ];
       }
 
