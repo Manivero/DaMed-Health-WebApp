@@ -2,13 +2,13 @@ require("dotenv").config();
 const validateEnv = require("./config/env");
 validateEnv();
 
-const express    = require("express");
-const cors       = require("cors");
-const helmet     = require("helmet");
-const morgan     = require("morgan");
+const express       = require("express");
+const cors          = require("cors");
+const helmet        = require("helmet");
+const morgan        = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
-const connectDB  = require("./config/db");
-const errorHandler = require("./middleware/errorMiddleware");
+const connectDB     = require("./config/db");
+const errorHandler  = require("./middleware/errorMiddleware");
 const { apiLimiter } = require("./middleware/rateLimiter");
 
 const authRoutes    = require("./routes/auth");
@@ -18,6 +18,7 @@ const reviewRoutes  = require("./routes/review");
 const adminRoutes   = require("./routes/admin");
 const profileRoutes = require("./routes/profile");
 const webhookRoutes = require("./routes/webhook");
+const aiRoutes      = require("./routes/ai");
 
 const app = express();
 connectDB();
@@ -43,8 +44,9 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/admin",   adminRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/ai",      aiRoutes);
 
-app.get("/api/health", (req, res) => res.json({ status: "ok", env: process.env.NODE_ENV }));
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 app.use((req, res) => res.status(404).json({ message: `Маршрут ${req.originalUrl} не найден` }));
 app.use(errorHandler);
