@@ -15,21 +15,43 @@ const reviewRules = [
 router.post("/", protect, reviewRules, validate, async (req, res, next) => {
   try {
     const { doctorId, rating, text } = req.body;
+
     const existing = await Review.findOne({ doctorId, userId: req.user._id });
-    if (existing) return res.status(409).json({ message: "Вы уже оставили отзыв этому врачу" });
+    if (existing) {
+      return res.status(409).json({ message: "Вы уже оставили отзыв этому врачу" });
+    }
 
-    const review = await Review.create({ doctorId, userId: req.user._id, rating, text });
-
-    const reviews = await Review.find({ doctorId });
-    const avg = reviews.reduce((a, r) => a + r.rating, 0) / reviews.length;
-    await Doctor.findByIdAndUpdate(doctorId, {
-      rating: +avg.toFixed(2),
-      reviewCount: reviews.length,
+    const review = await Review.create({
+      doctorId,
+      userId: req.user._id,
+      rating,
+      text,
     });
+
+    // Атомарная агрегация — нет race condition при одновременных отзывах
+    const [agg] = await Review.aggregate([
+      { $match: { doctorId: review.doctorId } },
+      {
+        $group: {
+          _id:   "$doctorId",
+          avg:   { $avg: "$rating" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    if (agg) {
+      await Doctor.findByIdAndUpdate(doctorId, {
+        rating:      +agg.avg.toFixed(2),
+        reviewCount: agg.count,
+      });
+    }
 
     const populated = await review.populate("userId", "email name");
     res.status(201).json(populated);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/reviews/:doctorId
@@ -37,9 +59,12 @@ router.get("/:doctorId", async (req, res, next) => {
   try {
     const reviews = await Review.find({ doctorId: req.params.doctorId })
       .populate("userId", "email name")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(50); // защита от dump всех отзывов
     res.json(reviews);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
