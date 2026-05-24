@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { body } = require("express-validator");
+const { body, query } = require("express-validator");
 const Doctor = require("../models/Doctor");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
@@ -21,42 +21,93 @@ router.post("/doctors", doctorRules, validate, async (req, res, next) => {
     const { name, specialty, experience, price, photo } = req.body;
     const doctor = await Doctor.create({ name, specialty, experience, price, photo });
     res.status(201).json(doctor);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.put("/doctors/:id", doctorRules, validate, async (req, res, next) => {
   try {
     const doctor = await Doctor.findByIdAndUpdate(req.params.id, req.body, {
-      new: true, runValidators: true,
+      new: true,
+      runValidators: true,
     });
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
     res.json(doctor);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.delete("/doctors/:id", async (req, res, next) => {
   try {
-    await Doctor.findByIdAndDelete(req.params.id);
+    const doctor = await Doctor.findByIdAndDelete(req.params.id);
+    if (!doctor) return res.status(404).json({ message: "Врач не найден" });
     res.json({ message: "Врач удалён" });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
-router.get("/users", async (req, res, next) => {
-  try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
-    res.json(users);
-  } catch (err) { next(err); }
-});
+// GET /api/admin/users?page=1&limit=50
+router.get(
+  "/users",
+  [
+    query("page").optional().isInt({ min: 1 }).toInt().default(1),
+    query("limit").optional().isInt({ min: 1, max: 100 }).toInt().default(50),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const page  = req.query.page  || 1;
+      const limit = req.query.limit || 50;
+      const skip  = (page - 1) * limit;
 
-router.get("/appointments", async (req, res, next) => {
-  try {
-    const appointments = await Appointment.find()
-      .populate("userId", "email")
-      .populate("doctorId", "name specialty")
-      .sort({ createdAt: -1 });
-    res.json(appointments);
-  } catch (err) { next(err); }
-});
+      const [users, total] = await Promise.all([
+        User.find().select("-password").sort({ createdAt: -1 }).skip(skip).limit(limit),
+        User.countDocuments(),
+      ]);
+
+      res.json({ users, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /api/admin/appointments?page=1&limit=50
+router.get(
+  "/appointments",
+  [
+    query("page").optional().isInt({ min: 1 }).toInt().default(1),
+    query("limit").optional().isInt({ min: 1, max: 100 }).toInt().default(50),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const page  = req.query.page  || 1;
+      const limit = req.query.limit || 50;
+      const skip  = (page - 1) * limit;
+
+      const [appointments, total] = await Promise.all([
+        Appointment.find()
+          .populate("userId", "email")
+          .populate("doctorId", "name specialty")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Appointment.countDocuments(),
+      ]);
+
+      res.json({
+        appointments,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // PATCH /api/admin/appointments/:id/status
 router.patch("/appointments/:id/status", async (req, res, next) => {
@@ -66,11 +117,17 @@ router.patch("/appointments/:id/status", async (req, res, next) => {
       return res.status(400).json({ message: "Недопустимый статус" });
     }
     const appt = await Appointment.findByIdAndUpdate(
-      req.params.id, { status }, { new: true }
-    ).populate("userId", "email").populate("doctorId", "name");
+      req.params.id,
+      { status },
+      { new: true }
+    )
+      .populate("userId", "email")
+      .populate("doctorId", "name");
     if (!appt) return res.status(404).json({ message: "Запись не найдена" });
     res.json(appt);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
