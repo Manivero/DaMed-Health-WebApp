@@ -6,6 +6,7 @@ const express       = require("express");
 const cors          = require("cors");
 const helmet        = require("helmet");
 const morgan        = require("morgan");
+const compression   = require("compression");
 const mongoSanitize = require("express-mongo-sanitize");
 const connectDB     = require("./config/db");
 const errorHandler  = require("./middleware/errorMiddleware");
@@ -26,11 +27,24 @@ connectDB();
 // Stripe webhook needs raw body — must be before express.json()
 app.use("/api/webhook", webhookRoutes);
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: process.env.CLIENT_URL,
   credentials: true,
 }));
+
+app.use(compression());
 app.use(express.json({ limit: "10kb" }));
 app.use(mongoSanitize());
 
@@ -48,13 +62,18 @@ app.use("/api/ai",      aiRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-app.use((req, res) => res.status(404).json({ message: `Маршрут ${req.originalUrl} не найден` }));
+app.use((req, res) =>
+  res.status(404).json({ message: `Маршрут ${req.originalUrl} не найден` })
+);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () =>
   console.log(`SERVER on port ${PORT} [${process.env.NODE_ENV}] 🚀`)
 );
-process.on("SIGTERM", () => server.close(() => process.exit(0)));
+
+const shutdown = () => server.close(() => process.exit(0));
+process.on("SIGTERM", shutdown);
+process.on("SIGINT",  shutdown); // Ctrl+C в dev
 
 module.exports = app;
