@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { login, register } from "../services/authService";
-import { saveAuth, logout as logoutUtil, getUser, isLoggedIn } from "../utils/auth";
+import { saveAuth, logoutWithServer, getUser, isLoggedIn } from "../utils/auth";
 
 export function useAuth() {
   const [loading, setLoading] = useState(false);
@@ -30,8 +30,8 @@ export function useAuth() {
     } finally { setLoading(false); }
   }, [navigate]);
 
-  const handleLogout = useCallback(() => {
-    logoutUtil();
+  const handleLogout = useCallback(async () => {
+    await logoutWithServer();
     navigate("/login", { replace: true });
   }, [navigate]);
 
