@@ -17,8 +17,26 @@ export const saveAuth = (data) => {
   }));
 };
 
+// Синхронная часть — всегда чистим локально
 export const logout = () => {
-  ["accessToken", "refreshToken", "user"].forEach((k) =>
-    localStorage.removeItem(k)
-  );
+  ["accessToken", "refreshToken", "user"].forEach((k) => localStorage.removeItem(k));
+};
+
+// Полный logout — инвалидируем refresh-токен на сервере
+export const logoutWithServer = async () => {
+  const refreshToken = getRefreshToken();
+  const accessToken  = getAccessToken();
+  logout(); // сначала чистим локально, даже если запрос упадёт
+  try {
+    await fetch("/api/auth/logout", {
+      method:  "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    // игнорируем — токены уже удалены локально
+  }
 };
