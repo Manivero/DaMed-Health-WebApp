@@ -3,8 +3,10 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { body } = require("express-validator");
 const User = require("../models/User");
+const RefreshToken = require("../models/RefreshToken");
 const { generateAccessToken, generateRefreshToken } = require("../utils/generateToken");
 const { authLimiter } = require("../middleware/rateLimiter");
+const { protect } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 
 const authRules = [
@@ -12,81 +14,86 @@ const authRules = [
   body("password").isLength({ min: 6 }).withMessage("Пароль минимум 6 символов"),
 ];
 
+async function issueTokens(userId, res) {
+  const accessToken  = generateAccessToken(userId);
+  const refreshToken = generateRefreshToken(userId);
+
+  const decoded = jwt.decode(refreshToken);
+  await RefreshToken.create({
+    token:     refreshToken,
+    userId,
+    expiresAt: new Date(decoded.exp * 1000),
+  });
+
+  return res.json({ accessToken, refreshToken });
+}
+
 // POST /api/auth/register
 router.post("/register", authLimiter, authRules, validate, async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
     const exists = await User.findOne({ email });
-    if (exists) {
-      return res.status(409).json({ message: "Пользователь уже существует" });
-    }
+    if (exists) return res.status(409).json({ message: "Пользователь уже существует" });
 
     const hash = await bcrypt.hash(password, 12);
     const user = await User.create({ email, password: hash });
 
-    const accessToken = generateAccessToken(user._id);
+    const accessToken  = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
+    const decoded = jwt.decode(refreshToken);
+    await RefreshToken.create({ token: refreshToken, userId: user._id, expiresAt: new Date(decoded.exp * 1000) });
 
-    res.status(201).json({
-      _id: user._id,
-      email: user.email,
-      role: user.role,
-      accessToken,
-      refreshToken,
-    });
-  } catch (err) {
-    next(err);
-  }
+    res.status(201).json({ _id: user._id, email: user.email, role: user.role, accessToken, refreshToken });
+  } catch (err) { next(err); }
 });
 
 // POST /api/auth/login
 router.post("/login", authLimiter, authRules, validate, async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email }).select("+password");
-    if (!user) {
-      return res.status(401).json({ message: "Неверный email или пароль" });
-    }
+    if (!user) return res.status(401).json({ message: "Неверный email или пароль" });
 
     const ok = await bcrypt.compare(password, user.password);
-    if (!ok) {
-      return res.status(401).json({ message: "Неверный email или пароль" });
-    }
+    if (!ok) return res.status(401).json({ message: "Неверный email или пароль" });
 
-    const accessToken = generateAccessToken(user._id);
+    const accessToken  = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
+    const decoded = jwt.decode(refreshToken);
+    await RefreshToken.create({ token: refreshToken, userId: user._id, expiresAt: new Date(decoded.exp * 1000) });
 
-    res.json({
-      _id: user._id,
-      email: user.email,
-      role: user.role,
-      accessToken,
-      refreshToken,
-    });
-  } catch (err) {
-    next(err);
-  }
+    res.json({ _id: user._id, email: user.email, role: user.role, accessToken, refreshToken });
+  } catch (err) { next(err); }
 });
 
 // POST /api/auth/refresh
-router.post("/refresh", async (req, res, next) => {
+router.post("/refresh", async (req, res) => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) {
-      return res.status(401).json({ message: "Refresh token отсутствует" });
-    }
+    if (!refreshToken) return res.status(401).json({ message: "Refresh token отсутствует" });
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({ message: "Пользователь не найден" });
-    }
+    const stored = await RefreshToken.findOne({ token: refreshToken });
+    if (!stored) return res.status(401).json({ message: "Токен отозван или не существует" });
 
-    res.json({ accessToken: generateAccessToken(user._id) });
-  } catch (err) {
-    return res.status(401).json({ message: "Недействительный refresh token" });
+    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    const accessToken = generateAccessToken(stored.userId);
+    res.json({ accessToken });
+  } catch {
+    res.status(401).json({ message: "Недействительный refresh token" });
+  }
+});
+
+// POST /api/auth/logout  ← НОВЫЙ МАРШРУТ
+router.post("/logout", protect, async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (refreshToken) {
+      await RefreshToken.deleteOne({ token: refreshToken, userId: req.user._id });
+    }
+    res.json({ message: "Выход выполнен" });
+  } catch {
+    res.json({ message: "Выход выполнен" }); // логаут не должен падать
   }
 });
 
