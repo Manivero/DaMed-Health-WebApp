@@ -233,11 +233,9 @@ function AdminInner() {
 // Wrapper that handles the admin check properly (no hook before guard)
 export default function Admin() {
   const navigate = useNavigate();
-  const admin = isAdmin();
-  if (!admin) {
-    // Safe to navigate here since hooks are not called conditionally
-    setTimeout(() => navigate("/"), 0);
-    return <Loader text="Нет доступа, перенаправляем…"/>;
-  }
+  useEffect(() => {
+    if (!isAdmin()) navigate("/", { replace: true });
+  }, [navigate]);
+  if (!isAdmin()) return null; // не рендерить ничего до редиректа
   return <AdminInner />;
 }
