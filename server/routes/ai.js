@@ -1,23 +1,27 @@
 const router = require("express").Router();
 const { protect } = require("../middleware/auth");
+const { aiLimiter } = require("../middleware/rateLimiter");
 
-/**
- * POST /api/ai/chat
- * Прокси к Anthropic API — ключ остаётся на сервере, не виден клиенту.
- * Поддерживает streaming (SSE) и обычный режим.
- */
-router.post("/chat", protect, async (req, res, next) => {
+const ALLOWED_ROLES = new Set(["user", "assistant"]);
+
+router.post("/chat", protect, aiLimiter, async (req, res, next) => {
   try {
     const { messages } = req.body;
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ message: "messages обязательны" });
     }
 
-    // Ограничиваем историю: не более 20 сообщений (защита от prompt-injection через длинный контекст)
-    const history = messages.slice(-20).map((m) => ({
-      role:    m.role === "assistant" ? "assistant" : "user",
-      content: String(m.content).slice(0, 2000), // обрезаем каждое сообщение
-    }));
+    const history = messages
+      .slice(-20)
+      .filter((m) => ALLOWED_ROLES.has(m.role))
+      .map((m) => ({
+        role:    m.role,
+        content: String(m.content).slice(0, 2000),
+      }));
+
+    if (history.length === 0) {
+      return res.status(400).json({ message: "Некорректный формат сообщений" });
+    }
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
