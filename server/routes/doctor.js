@@ -1,12 +1,11 @@
 const router = require("express").Router();
 const { query } = require("express-validator");
+const { isValidObjectId } = require("mongoose");
 const Doctor = require("../models/Doctor");
 const validate = require("../middleware/validate");
 
-// Экранирует спецсимволы regex — защита от ReDoS атаки
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// GET /api/doctors?page=1&limit=10&specialty=Кардиолог&search=Иван
 router.get(
   "/",
   [
@@ -25,15 +24,13 @@ router.get(
       const filter = {};
 
       if (req.query.specialty) {
+        // $regex допустим для specialty т.к. это controlled vocabulary (небольшой набор значений)
         filter.specialty = { $regex: escapeRegex(req.query.specialty), $options: "i" };
       }
 
       if (req.query.search) {
-        const safe = escapeRegex(req.query.search);
-        filter.$or = [
-          { name:      { $regex: safe, $options: "i" } },
-          { specialty: { $regex: safe, $options: "i" } },
-        ];
+        // Полнотекстовый поиск через text index — O(log n) вместо O(n)
+        filter.$text = { $search: req.query.search };
       }
 
       const [doctors, total] = await Promise.all([
@@ -51,9 +48,11 @@ router.get(
   }
 );
 
-// GET /api/doctors/:id
 router.get("/:id", async (req, res, next) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Некорректный ID врача" });
+    }
     const doctor = await Doctor.findById(req.params.id);
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
     res.json(doctor);
