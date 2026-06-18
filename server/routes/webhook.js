@@ -27,12 +27,7 @@ router.post(
       const { userId, doctorId, date } = session.metadata;
 
       try {
-        // ИДЕМПОТЕНТНОСТЬ: если Stripe шлёт повторный webhook —
-        // не создаём дубликат, просто отвечаем 200
-        const exists = await Appointment.findOne({
-          stripeSessionId: session.id,
-        });
-
+        const exists = await Appointment.findOne({ stripeSessionId: session.id });
         if (exists) {
           console.log("Webhook duplicate skipped:", session.id);
           return res.json({ received: true });
@@ -57,15 +52,28 @@ router.post(
 
         console.log("Appointment created via webhook:", appt._id);
       } catch (err) {
-        // 11000 — дубликат по уникальному индексу БД,
-        // тоже idempotent исход — не ошибка
         if (err.code === 11000) {
-          console.warn("Webhook: duplicate prevented by DB index:", session.id);
+          // Слот занят — возвращаем деньги
+          console.warn("Webhook: slot collision, initiating refund for session:", session.id);
+          try {
+            await stripe.refunds.create({ payment_intent: session.payment_intent });
+            console.log("Refund initiated for:", session.payment_intent);
+
+            const user = await User.findById(userId);
+            if (user) {
+              sendMail(
+                user.email,
+                "Возврат средств — слот занят",
+                "К сожалению, выбранное время уже занято другим пациентом. Средства будут возвращены в течение 5-10 рабочих дней. Пожалуйста, выберите другое время."
+              ).catch(console.error);
+            }
+          } catch (refundErr) {
+            console.error("Failed to initiate refund:", refundErr.message);
+          }
           return res.json({ received: true });
         }
 
         console.error("Webhook DB error:", err.message);
-        // Возвращаем 500 — Stripe повторит попытку позже
         return res.status(500).json({ error: "DB error" });
       }
     }
