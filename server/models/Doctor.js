@@ -2,21 +2,30 @@ const mongoose = require("mongoose");
 
 const doctorSchema = new mongoose.Schema(
   {
-    name: { type: String, required: [true, "Имя обязательно"], trim: true },
-    specialty: { type: String, required: [true, "Специальность обязательна"], trim: true },
-    rating: { type: Number, default: 0, min: 0, max: 5 },
+    name:        { type: String, required: [true, "Имя обязательно"], trim: true },
+    specialty:   { type: String, required: [true, "Специальность обязательна"], trim: true },
+    rating:      { type: Number, default: 0, min: 0, max: 5 },
     reviewCount: { type: Number, default: 0 },
-    experience: { type: Number, default: 0 },
-    price: { type: Number, default: 5000 },
-    photo: { type: String, default: "" },
-    bio: { type: String, default: "" },
-    education: { type: String, default: "" },
-    languages: { type: [String], default: ["Казахский", "Русский"] },
-    isOnline: { type: Boolean, default: false },
-    clinic: { type: String, default: "" },
-    address: { type: String, default: "" },
+    experience:  { type: Number, default: 0 },
+    price:       { type: Number, default: 5000 }, // всегда в центах!
+    photo:       { type: String, default: "" },
+    bio:         { type: String, default: "" },
+    education:   { type: String, default: "" },
+    languages:   { type: [String], default: ["Казахский", "Русский"] },
+    isOnline:    { type: Boolean, default: false },
+    clinic:      { type: String, default: "" },
+    address:     { type: String, default: "" },
   },
   { timestamps: true }
 );
+
+// Индекс для сортировки по рейтингу (основной список)
+doctorSchema.index({ rating: -1 });
+
+// Индекс для фильтрации по специализации
+doctorSchema.index({ specialty: 1 });
+
+// Полнотекстовый поиск вместо $regex
+doctorSchema.index({ name: "text", specialty: "text" });
 
 module.exports = mongoose.model("Doctor", doctorSchema);
