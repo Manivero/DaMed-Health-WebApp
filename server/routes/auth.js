@@ -14,6 +14,7 @@ const authRules = [
   body("password").isLength({ min: 6 }).withMessage("Пароль минимум 6 символов"),
 ];
 
+// Единая функция выдачи токенов — используется везде
 async function issueTokens(userId, res) {
   const accessToken  = generateAccessToken(userId);
   const refreshToken = generateRefreshToken(userId);
@@ -32,8 +33,14 @@ async function issueTokens(userId, res) {
 router.post("/register", authLimiter, authRules, validate, async (req, res, next) => {
   try {
     const { email, password } = req.body;
+
+    // Timing-safe: всегда выполняем bcrypt, даже если пользователь существует
     const exists = await User.findOne({ email });
-    if (exists) return res.status(409).json({ message: "Пользователь уже существует" });
+    if (exists) {
+      // Делаем bcrypt для нормализации времени ответа (anti-enumeration)
+      await bcrypt.hash(password, 12);
+      return res.status(409).json({ message: "Пользователь уже существует" });
+    }
 
     const hash = await bcrypt.hash(password, 12);
     const user = await User.create({ email, password: hash });
@@ -41,7 +48,10 @@ router.post("/register", authLimiter, authRules, validate, async (req, res, next
     const accessToken  = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     const decoded = jwt.decode(refreshToken);
-    await RefreshToken.create({ token: refreshToken, userId: user._id, expiresAt: new Date(decoded.exp * 1000) });
+    await RefreshToken.create({
+      token: refreshToken, userId: user._id,
+      expiresAt: new Date(decoded.exp * 1000),
+    });
 
     res.status(201).json({ _id: user._id, email: user.email, role: user.role, accessToken, refreshToken });
   } catch (err) { next(err); }
@@ -52,15 +62,24 @@ router.post("/login", authLimiter, authRules, validate, async (req, res, next) =
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select("+password");
-    if (!user) return res.status(401).json({ message: "Неверный email или пароль" });
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(401).json({ message: "Неверный email или пароль" });
+    // Timing-safe: всегда выполняем bcrypt сравнение
+    const dummyHash = "$2b$12$invalidhashfortimingnormalization";
+    const ok = user
+      ? await bcrypt.compare(password, user.password)
+      : await bcrypt.compare(password, dummyHash).then(() => false);
+
+    if (!user || !ok) {
+      return res.status(401).json({ message: "Неверный email или пароль" });
+    }
 
     const accessToken  = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     const decoded = jwt.decode(refreshToken);
-    await RefreshToken.create({ token: refreshToken, userId: user._id, expiresAt: new Date(decoded.exp * 1000) });
+    await RefreshToken.create({
+      token: refreshToken, userId: user._id,
+      expiresAt: new Date(decoded.exp * 1000),
+    });
 
     res.json({ _id: user._id, email: user.email, role: user.role, accessToken, refreshToken });
   } catch (err) { next(err); }
@@ -75,7 +94,13 @@ router.post("/refresh", async (req, res) => {
     const stored = await RefreshToken.findOne({ token: refreshToken });
     if (!stored) return res.status(401).json({ message: "Токен отозван или не существует" });
 
-    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    try {
+      jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      // Токен истёк или невалиден — удаляем из БД
+      await RefreshToken.deleteOne({ _id: stored._id });
+      return res.status(401).json({ message: "Недействительный refresh token" });
+    }
 
     const accessToken = generateAccessToken(stored.userId);
     res.json({ accessToken });
@@ -84,7 +109,7 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
-// POST /api/auth/logout  ← НОВЫЙ МАРШРУТ
+// POST /api/auth/logout
 router.post("/logout", protect, async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -93,7 +118,17 @@ router.post("/logout", protect, async (req, res) => {
     }
     res.json({ message: "Выход выполнен" });
   } catch {
-    res.json({ message: "Выход выполнен" }); // логаут не должен падать
+    res.json({ message: "Выход выполнен" });
+  }
+});
+
+// POST /api/auth/logout-all — выход со всех устройств
+router.post("/logout-all", protect, async (req, res) => {
+  try {
+    await RefreshToken.deleteMany({ userId: req.user._id });
+    res.json({ message: "Выход выполнен на всех устройствах" });
+  } catch (err) {
+    res.json({ message: "Выход выполнен" });
   }
 });
 
