@@ -1,12 +1,20 @@
 const router = require("express").Router();
-const { body } = require("express-validator");
+const { body, query, param } = require("express-validator");
+const { isValidObjectId } = require("mongoose");
 const { protect } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
 const sendMail = require("../utils/mailer");
 
-// Длительность слота в минутах — слоты короче этого считаются конфликтующими
+// Stripe инициализируется один раз на уровне модуля
+let stripe;
+try {
+  stripe = require("../config/stripe");
+} catch {
+  console.warn("⚠️  Stripe not configured. Payment routes will be unavailable.");
+}
+
 const SLOT_DURATION_MIN = 30;
 
 const bookRules = [
@@ -14,11 +22,6 @@ const bookRules = [
   body("date").isISO8601().toDate().withMessage("Некорректная дата"),
 ];
 
-/**
- * Проверяет, занят ли слот у врача на указанное время.
- * Считает конфликтом любую активную запись в окне ±SLOT_DURATION_MIN минут.
- * Возвращает true если слот занят.
- */
 async function isSlotTaken(doctorId, date, excludeId = null) {
   const slotMs = SLOT_DURATION_MIN * 60 * 1000;
   const from = new Date(date.getTime() - slotMs);
@@ -30,24 +33,25 @@ async function isSlotTaken(doctorId, date, excludeId = null) {
     status: { $in: ["pending", "confirmed"] },
   };
 
-  // При редактировании исключаем саму запись
   if (excludeId) query._id = { $ne: excludeId };
 
   const conflict = await Appointment.findOne(query).lean();
   return conflict !== null;
 }
 
-// ─── POST /api/booking/pay — Stripe Checkout ────────────────────────────────
+// POST /api/booking/pay — Stripe Checkout
 router.post("/pay", protect, bookRules, validate, async (req, res, next) => {
+  if (!stripe) {
+    return res.status(503).json({ message: "Платёжный сервис недоступен" });
+  }
+
   try {
-    const stripe = require("stripe")(process.env.STRIPE_SECRET);
     const { doctorId, date } = req.body;
     const slotDate = new Date(date);
 
-    const doctor = await Doctor.findById(doctorId);
+    const doctor = await Doctor.findById(doctorId).lean();
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
 
-    // Проверяем слот ДО создания Stripe-сессии — нет смысла брать деньги за занятое время
     if (await isSlotTaken(doctorId, slotDate)) {
       return res.status(409).json({
         message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
@@ -74,6 +78,7 @@ router.post("/pay", protect, bookRules, validate, async (req, res, next) => {
       ],
       success_url: `${process.env.CLIENT_URL}/success`,
       cancel_url:  `${process.env.CLIENT_URL}/cancel`,
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 минут на оплату
     });
 
     res.json({ url: session.url });
@@ -82,88 +87,107 @@ router.post("/pay", protect, bookRules, validate, async (req, res, next) => {
   }
 });
 
-// ─── POST /api/booking/confirm — прямая запись ───────────────────────────────
+// POST /api/booking/confirm — прямая запись (без оплаты)
 router.post("/confirm", protect, bookRules, validate, async (req, res, next) => {
   try {
     const { doctorId, date } = req.body;
     const slotDate = new Date(date);
 
-    // Шаг 1: оптимистичная проверка через findOne
-    if (await isSlotTaken(doctorId, slotDate)) {
-      return res.status(409).json({
-        message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
+    // Атомарная проверка: findOneAndUpdate с upsert через уникальный индекс
+    // Не делаем check-then-create (race condition), полагаемся на уникальный индекс MongoDB
+    let appt;
+    try {
+      appt = await Appointment.create({
+        userId:   req.user._id,
+        doctorId,
+        date:     slotDate,
       });
+    } catch (err) {
+      if (err.code === 11000) {
+        // Уникальный индекс поймал дублирующийся слот
+        return res.status(409).json({
+          message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
+        });
+      }
+      throw err;
     }
 
-    // Шаг 2: создаём запись
-    // Если два запроса прошли проверку одновременно — уникальный индекс
-    // в модели поймает дубликат и выбросит ошибку с кодом 11000
-    const appt = await Appointment.create({
-      userId:   req.user._id,
-      doctorId,
-      date:     slotDate,
-    });
-
-    // Отправляем письмо асинхронно, не блокируем ответ
+    // Email отправляется асинхронно — не блокирует ответ
     sendMail(
       req.user.email,
       "Запись подтверждена ✅",
       `Вы записаны на ${slotDate.toLocaleDateString("ru-RU", {
-        weekday: "long", day: "numeric", month: "long",
+        weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+        timeZone: "Asia/Almaty",
       })}`
-    ).catch(console.error);
+    ).catch((mailErr) => {
+      // Логируем, но не фейлим запрос
+      console.error("Failed to send confirmation email:", mailErr.message);
+    });
 
     res.status(201).json(appt);
   } catch (err) {
-    // Шаг 3: перехватываем ошибку дубликата от MongoDB (страховой уровень)
-    if (err.code === 11000) {
-      return res.status(409).json({
-        message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
-      });
-    }
     next(err);
   }
 });
 
-// ─── GET /api/booking/my ─────────────────────────────────────────────────────
+// GET /api/booking/my
 router.get("/my", protect, async (req, res, next) => {
   try {
     const appointments = await Appointment.find({ userId: req.user._id })
       .populate("doctorId", "name specialty photo")
-      .sort({ date: 1 });
+      .sort({ date: 1 })
+      .lean(); // lean() для read-only — 2-3x быстрее
     res.json(appointments);
   } catch (err) {
     next(err);
   }
 });
 
-// ─── GET /api/booking/slots/:doctorId — свободные слоты для фронта ───────────
-// Фронт может показывать какие слоты уже заняты (серые/недоступные)
-router.get("/slots/:doctorId", async (req, res, next) => {
-  try {
-    const { date } = req.query; // ?date=2024-12-01
-    if (!date) return res.status(400).json({ message: "Укажите дату (?date=YYYY-MM-DD)" });
+// GET /api/booking/slots/:doctorId
+router.get(
+  "/slots/:doctorId",
+  [
+    param("doctorId").custom((v) => {
+      if (!isValidObjectId(v)) throw new Error("Некорректный ID врача");
+      return true;
+    }),
+    query("date").isISO8601().withMessage("Укажите дату в формате YYYY-MM-DD"),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const dayStart = new Date(req.query.date);
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const dayEnd = new Date(req.query.date);
+      dayEnd.setUTCHours(23, 59, 59, 999);
 
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
+      if (isNaN(dayStart.getTime())) {
+        return res.status(400).json({ message: "Некорректная дата" });
+      }
 
-    const taken = await Appointment.find({
-      doctorId: req.params.doctorId,
-      date: { $gte: dayStart, $lte: dayEnd },
-      status: { $in: ["pending", "confirmed"] },
-    }).select("date -_id").lean();
+      const taken = await Appointment.find({
+        doctorId: req.params.doctorId,
+        date: { $gte: dayStart, $lte: dayEnd },
+        status: { $in: ["pending", "confirmed"] },
+      })
+        .select("date -_id")
+        .lean();
 
-    res.json({ takenSlots: taken.map(a => a.date) });
-  } catch (err) {
-    next(err);
+      res.json({ takenSlots: taken.map((a) => a.date) });
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
-// ─── DELETE /api/booking/:id — отмена записи ────────────────────────────────
+// DELETE /api/booking/:id — отмена записи
 router.delete("/:id", protect, async (req, res, next) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Некорректный ID записи" });
+    }
+
     const appt = await Appointment.findOne({
       _id:    req.params.id,
       userId: req.user._id,
