@@ -28,8 +28,14 @@ router.post("/doctors", doctorRules, validate, async (req, res, next) => {
 
 router.put("/doctors/:id", doctorRules, validate, async (req, res, next) => {
   try {
-    const doctor = await Doctor.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    const allowedFields = ["name", "specialty", "experience", "price", "photo", "bio", "clinic", "address", "languages", "isOnline"];
+    const update = {};
+    allowedFields.forEach((k) => {
+      if (req.body[k] !== undefined) update[k] = req.body[k];
+    });
+
+    const doctor = await Doctor.findByIdAndUpdate(req.params.id, update, {
+      new:           true,
       runValidators: true,
     });
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
