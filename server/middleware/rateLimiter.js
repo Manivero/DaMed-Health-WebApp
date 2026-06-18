@@ -1,15 +1,13 @@
 const rateLimit = require("express-rate-limit");
 
-// Общий лимит для всего API
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
+  windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Слишком много запросов, попробуйте через 15 минут" },
 });
 
-// Жёсткий лимит для auth эндпоинтов
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -19,4 +17,14 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-module.exports = { apiLimiter, authLimiter };
+// Лимит для AI: 10 запросов в минуту на пользователя
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Превышен лимит запросов к AI. Попробуйте через минуту." },
+});
+
+module.exports = { apiLimiter, authLimiter, aiLimiter };
