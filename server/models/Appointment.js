@@ -6,41 +6,42 @@ const appointmentSchema = new mongoose.Schema(
       type:     mongoose.Schema.Types.ObjectId,
       ref:      "User",
       required: true,
-      index:    true, // быстрый запрос GET /api/booking/my
+      index:    true,
     },
     doctorId: {
       type:     mongoose.Schema.Types.ObjectId,
       ref:      "Doctor",
       required: true,
+      index:    true, // ДОБАВЛЕНО: нужен для isSlotTaken() и webhook
     },
     date: {
       type:     Date,
       required: [true, "Дата обязательна"],
+    },
+    timezone: {
+      type:    String,
+      default: "Asia/Almaty", // ДОБАВЛЕНО: для корректного отображения времени
     },
     status: {
       type:    String,
       enum:    ["pending", "confirmed", "cancelled"],
       default: "pending",
     },
-    // Сохраняем ID Stripe-сессии для идемпотентности webhook:
-    // если Stripe пришлёт одно событие дважды — дубликат не создастся
     stripeSessionId: {
       type:   String,
-      sparse: true,  // null-значения не попадают в индекс
+      sparse: true,
       unique: true,
     },
   },
   { timestamps: true }
 );
 
-// Составной уникальный индекс: один врач — один активный слот в одно время.
-// Partial filter исключает отменённые записи — они не блокируют слот.
 appointmentSchema.index(
   { doctorId: 1, date: 1 },
   {
-    unique:                true,
+    unique:                  true,
     partialFilterExpression: { status: { $in: ["pending", "confirmed"] } },
-    name:                  "unique_active_slot",
+    name:                    "unique_active_slot",
   }
 );
 
