@@ -52,7 +52,7 @@ router.put(
   }
 );
 
-// PUT /api/profile/password
+// PUT /api/profile/password — ИСПРАВЛЕНО: инвалидируем все сессии при смене пароля
 router.put(
   "/password",
   protect,
@@ -72,7 +72,12 @@ router.put(
       }
       user.password = await bcrypt.hash(req.body.newPassword, 12);
       await user.save();
-      res.json({ message: "Пароль обновлён" });
+
+      // КРИТИЧНО: инвалидируем все refresh-токены — злоумышленник теряет доступ
+      const RefreshToken = require("../models/RefreshToken");
+      await RefreshToken.deleteMany({ userId: req.user._id });
+
+      res.json({ message: "Пароль обновлён. Необходимо войти заново." });
     } catch (err) {
       next(err);
     }
