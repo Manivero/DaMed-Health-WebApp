@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { body, query } = require("express-validator");
+const { body, query, param } = require("express-validator");
 const Doctor = require("../models/Doctor");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
@@ -7,6 +7,8 @@ const { protect, adminOnly } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 
 router.use(protect, adminOnly);
+
+const idParamRule = param("id").isMongoId().withMessage("Некорректный ID");
 
 const doctorRules = [
   body("name").trim().notEmpty().withMessage("Имя обязательно"),
@@ -26,7 +28,7 @@ router.post("/doctors", doctorRules, validate, async (req, res, next) => {
   }
 });
 
-router.put("/doctors/:id", doctorRules, validate, async (req, res, next) => {
+router.put("/doctors/:id", idParamRule, doctorRules, validate, async (req, res, next) => {
   try {
     const allowedFields = ["name", "specialty", "experience", "price", "photo", "bio", "clinic", "address", "languages", "isOnline"];
     const update = {};
@@ -45,11 +47,20 @@ router.put("/doctors/:id", doctorRules, validate, async (req, res, next) => {
   }
 });
 
-router.delete("/doctors/:id", async (req, res, next) => {
+// Мягкое удаление: для медицинского сервиса физическое удаление врача
+// разрывает ссылки в уже существующих Appointment/Review (осиротевшие
+// doctorId → null после populate, история приёмов пациента "обнуляется").
+// isActive:false скрывает врача из публичного каталога, но сохраняет
+// целостность исторических данных.
+router.delete("/doctors/:id", idParamRule, validate, async (req, res, next) => {
   try {
-    const doctor = await Doctor.findByIdAndDelete(req.params.id);
+    const doctor = await Doctor.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
-    res.json({ message: "Врач удалён" });
+    res.json({ message: "Врач скрыт из каталога", doctor });
   } catch (err) {
     next(err);
   }
@@ -96,13 +107,13 @@ router.get(
       const skip  = (page - 1) * limit;
 
       const [appointments, total] = await Promise.all([
-        Appointment.find()
+        Appointment.find({ status: { $ne: "pending_payment" } }) // незавершённые попытки оплаты не показываем админу как "записи"
           .populate("userId", "email")
           .populate("doctorId", "name specialty")
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit),
-        Appointment.countDocuments(),
+        Appointment.countDocuments({ status: { $ne: "pending_payment" } }),
       ]);
 
       res.json({
@@ -116,24 +127,27 @@ router.get(
 );
 
 // PATCH /api/admin/appointments/:id/status
-router.patch("/appointments/:id/status", async (req, res, next) => {
-  try {
-    const { status } = req.body;
-    if (!["pending", "confirmed", "cancelled"].includes(status)) {
-      return res.status(400).json({ message: "Недопустимый статус" });
+router.patch(
+  "/appointments/:id/status",
+  idParamRule,
+  body("status").isIn(["pending", "confirmed", "cancelled"]).withMessage("Недопустимый статус"),
+  validate,
+  async (req, res, next) => {
+    try {
+      const { status } = req.body;
+      const appt = await Appointment.findOneAndUpdate(
+        { _id: req.params.id, status: { $ne: "pending_payment" } },
+        { status },
+        { new: true }
+      )
+        .populate("userId", "email")
+        .populate("doctorId", "name");
+      if (!appt) return res.status(404).json({ message: "Запись не найдена" });
+      res.json(appt);
+    } catch (err) {
+      next(err);
     }
-    const appt = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    )
-      .populate("userId", "email")
-      .populate("doctorId", "name");
-    if (!appt) return res.status(404).json({ message: "Запись не найдена" });
-    res.json(appt);
-  } catch (err) {
-    next(err);
   }
-});
+);
 
 module.exports = router;
