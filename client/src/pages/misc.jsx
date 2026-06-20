@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { verifyPaymentSession } from "../services/bookingService";
 
 function ResultPage({ icon, title, sub, actions, color="#00C9A7" }) {
   return (
@@ -27,6 +29,45 @@ function ResultPage({ icon, title, sub, actions, color="#00C9A7" }) {
 }
 
 export function Success() {
+  const [params] = useSearchParams();
+  const sessionId = params.get("session_id");
+  // "checking" | "confirmed" | "pending" | "not_found"
+  const [status, setStatus] = useState(sessionId ? "checking" : "confirmed");
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let active = true;
+    verifyPaymentSession(sessionId)
+      .then((res) => { if (active) setStatus(res.data.status === "confirmed" ? "confirmed" : "pending"); })
+      .catch(() => { if (active) setStatus("pending"); });
+    return () => { active = false; };
+  }, [sessionId]);
+
+  if (status === "checking") {
+    return (
+      <ResultPage
+        icon="⏳"
+        title="Проверяем оплату…"
+        sub="Это займёт несколько секунд."
+        actions={<Link to="/appointments" className="btn btn-ghost btn-lg">Мои записи</Link>}
+      />
+    );
+  }
+
+  if (status === "pending" || status === "not_found") {
+    return (
+      <ResultPage
+        icon="⏳"
+        title="Оплата обрабатывается"
+        sub="Мы получили запрос на оплату — подтверждение придёт на email в течение нескольких минут. Если запись не появится, средства будут автоматически возвращены."
+        actions={<>
+          <Link to="/appointments" className="btn btn-primary btn-lg">📋 Мои записи</Link>
+          <Link to="/doctors" className="btn btn-ghost btn-lg">Другой врач</Link>
+        </>}
+      />
+    );
+  }
+
   return (
     <ResultPage
       icon="✅"
