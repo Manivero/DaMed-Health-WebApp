@@ -6,6 +6,13 @@ const validate = require("../middleware/validate");
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const SORT_MAP = {
+  rating:      { rating: -1 },
+  price_asc:   { price: 1 },
+  price_desc:  { price: -1 },
+  experience:  { experience: -1 },
+};
+
 router.get(
   "/",
   [
@@ -13,6 +20,8 @@ router.get(
     query("limit").optional().isInt({ min: 1, max: 50 }).toInt(),
     query("search").optional().isString().trim().isLength({ max: 100 }),
     query("specialty").optional().isString().trim().isLength({ max: 100 }),
+    query("sort").optional().isIn(Object.keys(SORT_MAP)).withMessage("Некорректный параметр sort"),
+    query("minRating").optional().isFloat({ min: 0, max: 5 }).toFloat(),
   ],
   validate,
   async (req, res, next) => {
@@ -20,21 +29,24 @@ router.get(
       const page  = req.query.page  || 1;
       const limit = req.query.limit || 20;
       const skip  = (page - 1) * limit;
+      const sort  = SORT_MAP[req.query.sort] || SORT_MAP.rating;
 
-      const filter = {};
+      const filter = { isActive: { $ne: false } };
 
       if (req.query.specialty) {
-        // $regex допустим для specialty т.к. это controlled vocabulary (небольшой набор значений)
         filter.specialty = { $regex: escapeRegex(req.query.specialty), $options: "i" };
       }
 
       if (req.query.search) {
-        // Полнотекстовый поиск через text index — O(log n) вместо O(n)
         filter.$text = { $search: req.query.search };
       }
 
+      if (req.query.minRating) {
+        filter.rating = { $gte: req.query.minRating };
+      }
+
       const [doctors, total] = await Promise.all([
-        Doctor.find(filter).sort({ rating: -1 }).skip(skip).limit(limit),
+        Doctor.find(filter).sort(sort).skip(skip).limit(limit),
         Doctor.countDocuments(filter),
       ]);
 
@@ -53,7 +65,7 @@ router.get("/:id", async (req, res, next) => {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ message: "Некорректный ID врача" });
     }
-    const doctor = await Doctor.findById(req.params.id);
+    const doctor = await Doctor.findOne({ _id: req.params.id, isActive: { $ne: false } });
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
     res.json(doctor);
   } catch (err) {
