@@ -1,24 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export function useFetch(fetchFn, deps = []) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
+  const mountedRef = useRef(true);
 
   const execute = useCallback(async () => {
     setLoading(true); setError("");
     try {
       const res = await fetchFn();
-      setData(res.data);
+      if (mountedRef.current) setData(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || "Ошибка загрузки");
+      if (mountedRef.current) {
+        setError(err.response?.data?.message || "Ошибка загрузки");
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  useEffect(() => { execute(); }, [execute]);
+  useEffect(() => {
+    mountedRef.current = true;
+    execute();
+    return () => { mountedRef.current = false; };
+  }, [execute]);
 
   return { data, loading, error, refetch: execute };
 }
