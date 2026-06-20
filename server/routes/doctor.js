@@ -4,8 +4,6 @@ const { isValidObjectId } = require("mongoose");
 const Doctor = require("../models/Doctor");
 const validate = require("../middleware/validate");
 
-const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 const SORT_MAP = {
   rating:      { rating: -1 },
   price_asc:   { price: 1 },
@@ -34,7 +32,7 @@ router.get(
       const filter = { isActive: { $ne: false } };
 
       if (req.query.specialty) {
-        filter.specialty = { $regex: escapeRegex(req.query.specialty), $options: "i" };
+        filter.specialty = req.query.specialty;
       }
 
       if (req.query.search) {
