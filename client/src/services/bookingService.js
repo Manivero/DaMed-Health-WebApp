@@ -4,3 +4,5 @@ export const bookAppointment   = (data) => apiClient.post("/booking/confirm", da
 export const payAndBook        = (data) => apiClient.post("/booking/pay",     data);
 export const getMyAppointments = ()     => apiClient.get("/booking/my");
 export const cancelAppointment = (id)  => apiClient.delete(`/booking/${id}`);
+export const verifyPaymentSession = (sessionId) =>
+  apiClient.get(`/booking/verify/${encodeURIComponent(sessionId)}`);
