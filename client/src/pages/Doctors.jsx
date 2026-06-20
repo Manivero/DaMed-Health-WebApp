@@ -14,17 +14,8 @@ const SORTS = [
   { value: "experience", label: "По опыту" },
 ];
 
-function sortDoctors(doctors, sort) {
-  const arr = [...doctors];
-  if (sort === "rating")     return arr.sort((a,b) => (b.rating||0) - (a.rating||0));
-  if (sort === "price_asc")  return arr.sort((a,b) => (a.price||0) - (b.price||0));
-  if (sort === "price_desc") return arr.sort((a,b) => (b.price||0) - (a.price||0));
-  if (sort === "experience") return arr.sort((a,b) => (b.experience||0) - (a.experience||0));
-  return arr;
-}
-
 export default function Doctors() {
-  const [allDocs,    setAllDocs]    = useState([]);
+  const [doctors,    setDoctors]    = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState("");
@@ -37,26 +28,24 @@ export default function Doctors() {
 
   const debouncedSearch = useDebounce(search, 400);
 
+  // Сортировка, фильтр по рейтингу, поиск и пагинация — всё применяется на
+  // сервере, на полном наборе врачей, а не только на уже загрученной странице.
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const params = { page, limit: 12 };
+      const params = { page, limit: 12, sort };
       if (filter !== "Все") params.specialty = filter;
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (minRating > 0) params.minRating = minRating;
       const res = await getDoctors(params);
-      setAllDocs(res.data.doctors);
+      setDoctors(res.data.doctors);
       setPagination(res.data.pagination);
     } catch { setError("Не удалось загрузить список врачей"); }
     finally { setLoading(false); }
-  }, [page, filter, debouncedSearch]);
+  }, [page, filter, sort, minRating, debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [filter, debouncedSearch]);
-
-  const doctors = sortDoctors(
-    allDocs.filter(d => (d.rating || 0) >= minRating),
-    sort
-  );
+  useEffect(() => { setPage(1); }, [filter, sort, minRating, debouncedSearch]);
 
   return (
     <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}>
@@ -142,7 +131,7 @@ export default function Doctors() {
       {(filter !== "Все" || debouncedSearch || minRating > 0) && !loading && (
         <div style={{ padding:"10px 48px", display:"flex", gap:8, alignItems:"center", background:"var(--teal-l)", borderBottom:"1px solid var(--teal-mid)" }}>
           <span style={{ fontSize:13, color:"var(--teal)", fontWeight:500 }}>
-            Найдено: {doctors.length}
+            Найдено: {pagination?.total ?? doctors.length}
           </span>
           {filter !== "Все" && <span className="chip chip-active" style={{fontSize:12}}>{filter} ✕</span>}
           {debouncedSearch && <span className="chip chip-active" style={{fontSize:12}}>"{debouncedSearch}" ✕</span>}
