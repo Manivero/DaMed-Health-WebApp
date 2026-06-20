@@ -32,6 +32,21 @@ router.put(
       .withMessage("Некорректный номер телефона"),
     body("bloodType").optional().isIn(["A+","A-","B+","B-","AB+","AB-","O+","O-",""]),
     body("allergies").optional().trim().isLength({ max: 300 }),
+    // НОВОЕ: birthDate раньше принималось и писалось в БД без какой-либо
+    // проверки формата/диапазона. Mongoose тихо приводил произвольную строку
+    // к Date (в т.ч. к "Invalid Date" в некоторых случаях ввода).
+    body("birthDate")
+      .optional({ values: "falsy" })
+      .isISO8601()
+      .withMessage("Некорректная дата рождения")
+      .custom((value) => {
+        const date = new Date(value);
+        const now = new Date();
+        const minDate = new Date(now.getFullYear() - 120, now.getMonth(), now.getDate());
+        if (date > now) throw new Error("Дата рождения не может быть в будущем");
+        if (date < minDate) throw new Error("Некорректная дата рождения");
+        return true;
+      }),
   ],
   validate,
   async (req, res, next) => {
@@ -52,7 +67,7 @@ router.put(
   }
 );
 
-// PUT /api/profile/password — ИСПРАВЛЕНО: инвалидируем все сессии при смене пароля
+// PUT /api/profile/password — инвалидируем все сессии при смене пароля
 router.put(
   "/password",
   protect,
@@ -84,14 +99,17 @@ router.put(
   }
 );
 
-// GET /api/profile/stats  — одна агрегация вместо трёх запросов
+// GET /api/profile/stats — одна агрегация вместо трёх запросов
 router.get("/stats", protect, async (req, res, next) => {
   try {
     const now = new Date();
     const userId = new mongoose.Types.ObjectId(req.user._id);
 
     const [result] = await Appointment.aggregate([
-      { $match: { userId } },
+      // ИЗМЕНЕНО: исключаем pending_payment — это незавершённые/неоплаченные
+      // попытки записи (см. модель Appointment, раздел 9.1), их не следует
+      // показывать пользователю как часть его реальной статистики записей.
+      { $match: { userId, status: { $ne: "pending_payment" } } },
       {
         $group: {
           _id:       null,
