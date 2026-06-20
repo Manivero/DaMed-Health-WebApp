@@ -1,5 +1,4 @@
-export const getAccessToken  = () => localStorage.getItem("accessToken");
-export const getRefreshToken = () => localStorage.getItem("refreshToken");
+export const getAccessToken = () => localStorage.getItem("accessToken");
 
 export const getUser = () => {
   try { return JSON.parse(localStorage.getItem("user")); }
@@ -9,9 +8,11 @@ export const getUser = () => {
 export const isLoggedIn = () => !!getAccessToken();
 export const isAdmin    = () => getUser()?.role === "admin";
 
+// refreshToken больше не передаётся сюда и не хранится в localStorage — сервер
+// выставляет его как httpOnly+Secure+SameSite cookie, недоступную для JS.
+// Это устраняет риск кражи 7-дневного refresh-токена через XSS.
 export const saveAuth = (data) => {
-  localStorage.setItem("accessToken",  data.accessToken);
-  localStorage.setItem("refreshToken", data.refreshToken);
+  localStorage.setItem("accessToken", data.accessToken);
   localStorage.setItem("user", JSON.stringify({
     _id: data._id, email: data.email, role: data.role,
   }));
@@ -19,22 +20,23 @@ export const saveAuth = (data) => {
 
 // Синхронная часть — всегда чистим локально
 export const logout = () => {
-  ["accessToken", "refreshToken", "user"].forEach((k) => localStorage.removeItem(k));
+  ["accessToken", "user"].forEach((k) => localStorage.removeItem(k));
 };
 
-// Полный logout — инвалидируем refresh-токен на сервере
+// Полный logout — инвалидируем refresh-токен на сервере.
+// refreshToken не передаём явно — браузер сам приложит httpOnly cookie
+// (apiClient настроен с withCredentials: true).
 export const logoutWithServer = async () => {
-  const refreshToken = getRefreshToken();
-  const accessToken  = getAccessToken();
+  const accessToken = getAccessToken();
   logout(); // сначала чистим локально, даже если запрос упадёт
   try {
     await fetch("/api/auth/logout", {
-      method:  "POST",
+      method:      "POST",
+      credentials: "include",
       headers: {
         "Content-Type":  "application/json",
         "Authorization": `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ refreshToken }),
     });
   } catch {
     // игнорируем — токены уже удалены локально
