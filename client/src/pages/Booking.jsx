@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { getDoctorById } from "../services/doctorService";
-import { bookAppointment } from "../services/bookingService";
+import { bookAppointment, payAndBook } from "../services/bookingService";
 import { useFetch } from "../hooks/useFetch";
 import { useToast } from "../context/ToastContext";
 import apiClient from "../services/apiClient";
@@ -27,7 +27,7 @@ function nextDays(n) {
       label: ruDay[d.getDay()],
       num:   d.getDate(),
       mon:   ruMon[d.getMonth()],
-      iso:   toLocalISODate(d), // ← исправлено: локальная дата, не UTC
+      iso:   toLocalISODate(d),
     });
   }
   return days;
@@ -41,43 +41,55 @@ export default function Booking() {
   const [selTime, setSelTime] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess]       = useState(false);
-  const [takenSlots, setTakenSlots] = useState([]); // реальные занятые слоты из API
+  const [takenSlots, setTakenSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
   const { data: doctor, loading, error } = useFetch(() => getDoctorById(id), [id]);
   const days = nextDays(8);
+  const isPaid = !!doctor?.price;
 
-  // Загружаем занятые слоты при выборе дня
   useEffect(() => {
     if (!selDay || !id) return;
     setSlotsLoading(true);
-    setSelTime(null); // сбрасываем выбранное время при смене дня
+    setSelTime(null);
+    const controller = new AbortController();
     apiClient
-      .get(`/booking/slots/${id}?date=${selDay}`)
+      .get(`/booking/slots/${id}?date=${selDay}`, { signal: controller.signal })
       .then((res) => {
-        // Сервер возвращает массив Date — извлекаем только HH:MM
         const taken = (res.data.takenSlots || []).map((dt) => {
           const d = new Date(dt);
           return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
         });
         setTakenSlots(taken);
       })
-      .catch(() => setTakenSlots([]))
+      .catch((err) => {
+        if (err.name !== "CanceledError") setTakenSlots([]);
+      })
       .finally(() => setSlotsLoading(false));
+    return () => controller.abort();
   }, [selDay, id]);
 
   const handleBook = async () => {
     if (!selDay || !selTime) { showToast("Выберите дату и время"); return; }
     setSubmitting(true);
+    const payload = { doctorId: id, date: `${selDay}T${selTime}:00` };
+
     try {
-      await bookAppointment({ doctorId: id, date: `${selDay}T${selTime}:00` });
+      if (isPaid) {
+        // Платный приём: создаём Stripe Checkout-сессию (слот резервируется на
+        // сервере атомарно ДО редиректа) и уводим пользователя на страницу оплаты.
+        const res = await payAndBook(payload);
+        window.location.href = res.data.url;
+        return; // уходим со страницы — дальше пользователь либо вернётся на /success, либо на /cancel
+      }
+
+      await bookAppointment(payload);
       setSuccess(true);
       showToast("Запись подтверждена! ✅");
       setTimeout(() => navigate("/appointments"), 2200);
     } catch (err) {
       showToast(err.response?.data?.message || "Ошибка записи");
-      // Обновляем слоты чтобы отразить новое состояние
-      if (selDay) setSelDay((d) => d); // trigger effect
+      if (selDay) setSelDay((d) => d);
     } finally {
       setSubmitting(false);
     }
@@ -147,10 +159,10 @@ export default function Booking() {
                   </div>
                 </div>
               )}
-              <div className="sum-row"><span className="sum-lbl">Стоимость приёма</span><span className="sum-val">{doctor?.price ? `$${(doctor.price / 100).toFixed(0)}` : "По договорённости"}</span></div>
+              <div className="sum-row"><span className="sum-lbl">Стоимость приёма</span><span className="sum-val">{isPaid ? `$${(doctor.price / 100).toFixed(0)}` : "Бесплатно"}</span></div>
               <div className="sum-row"><span className="sum-lbl">Дата</span><span className="sum-val">{selDay || "—"}</span></div>
               <div className="sum-row"><span className="sum-lbl">Время</span><span className="sum-val">{selTime || "—"}</span></div>
-              <div className="sum-row"><span className="sum-lbl">Итого</span><span className="sum-val">{doctor?.price ? `$${(doctor.price / 100).toFixed(0)}` : "—"}</span></div>
+              <div className="sum-row"><span className="sum-lbl">Итого</span><span className="sum-val">{isPaid ? `$${(doctor.price / 100).toFixed(0)}` : "Бесплатно"}</span></div>
             </div>
             <div className="tip-card">
               <div className="tip-tag">Совет</div>
@@ -162,7 +174,7 @@ export default function Booking() {
               onClick={handleBook}
               disabled={submitting || !selDay || !selTime}
             >
-              {submitting ? "Подтверждаем…" : "Подтвердить запись"}
+              {submitting ? "Подтверждаем…" : isPaid ? "Перейти к оплате →" : "Подтвердить запись"}
             </button>
           </div>
         </div>
