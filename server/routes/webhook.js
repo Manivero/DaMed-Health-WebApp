@@ -8,8 +8,18 @@ router.post(
   require("express").raw({ type: "application/json" }),
   async (req, res) => {
     // Singleton-клиент Stripe, как и везде в приложении.
-    const stripe = require("../config/stripe");
-    const sig    = req.headers["stripe-signature"];
+    // ВАЖНО: STRIPE_SECRET опционален (см. server/config/env.js) — config/stripe.js
+    // синхронно бросает исключение при require, если ключ не задан. Без этого
+    // try/catch необработанный throw внутри async-хендлера превращается в
+    // unhandled promise rejection и крашит весь процесс на каждом POST сюда.
+    let stripe;
+    try {
+      stripe = require("../config/stripe");
+    } catch {
+      console.error("Webhook called but Stripe is not configured (STRIPE_SECRET missing)");
+      return res.status(503).json({ message: "Платёжный сервис недоступен" });
+    }
+    const sig = req.headers["stripe-signature"];
 
     let event;
     try {
