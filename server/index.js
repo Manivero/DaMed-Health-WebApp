@@ -23,6 +23,14 @@ const webhookRoutes = require("./routes/webhook");
 const aiRoutes      = require("./routes/ai");
 
 const app = express();
+
+// КРИТИЧНО: без этого req.ip и, как следствие, apiLimiter/authLimiter/refreshLimiter
+// (см. middleware/rateLimiter.js) видят IP реверс-прокси/балансировщика ОДИНАКОВЫМ
+// для ВСЕХ пользователей в проде — лимиты на логин/API схлопываются на весь сервис
+// разом. Число хопов настраивается через TRUST_PROXY_HOPS (1 — для одного nginx/LB
+// перед приложением; увеличить, если в цепочке несколько прокси).
+app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS) || 1);
+
 connectDB();
 
 // Stripe webhook needs raw body — must be before express.json()
