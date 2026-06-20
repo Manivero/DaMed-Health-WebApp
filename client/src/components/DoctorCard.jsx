@@ -10,13 +10,12 @@ const GRADIENTS = [
   "linear-gradient(135deg,#F59E0B,#fbbf24)",
 ];
 function getGrad(name="") { let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))&0xffff; return GRADIENTS[h%GRADIENTS.length]; }
-function isOnline(id="")  { return id.charCodeAt(id.length-1)%3!==0; }
 
 export default function DoctorCard({ doctor }) {
   const { isFav, toggle } = useFavorites();
   const fav      = isFav(doctor._id);
   const initials = (doctor.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-  const online   = isOnline(doctor._id||"");
+  const online   = !!doctor.isOnline;
   const rating   = doctor.rating||0;
   const filled   = Math.round(rating);
 
