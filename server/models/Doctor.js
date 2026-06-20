@@ -15,6 +15,10 @@ const doctorSchema = new mongoose.Schema(
     isOnline:    { type: Boolean, default: false },
     clinic:      { type: String, default: "" },
     address:     { type: String, default: "" },
+    // Мягкое удаление: скрытые врачи не попадают в публичный каталог
+    // (server/routes/doctor.js), но связанные Appointment/Review сохраняют
+    // целостность ссылок — история приёмов пациента не "обнуляется".
+    isActive:    { type: Boolean, default: true },
   },
   { timestamps: true }
 );
