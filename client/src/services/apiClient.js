@@ -1,7 +1,7 @@
 import axios from "axios";
-import { getAccessToken, getRefreshToken, saveAuth, logout } from "../utils/auth";
+import { getAccessToken, saveAuth, logout } from "../utils/auth";
 
-const apiClient = axios.create({ baseURL: "/api" });
+const apiClient = axios.create({ baseURL: "/api", withCredentials: true });
 
 // Attach access token
 apiClient.interceptors.request.use((config) => {
@@ -26,10 +26,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry) {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) { logout(); window.location.href = "/login"; return Promise.reject(error); }
-
+    if (error.response?.status === 401 && !original._retry && !original.url?.includes("/auth/refresh")) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -43,11 +40,12 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const res = await axios.post("/api/auth/refresh", { refreshToken });
+        // refreshToken не передаётся явно — браузер сам приложит httpOnly
+        // cookie благодаря withCredentials: true.
+        const res = await axios.post("/api/auth/refresh", null, { withCredentials: true });
         const { accessToken } = res.data;
-        // Patch stored auth preserving other fields
         const stored = JSON.parse(localStorage.getItem("user") || "{}");
-        saveAuth({ ...stored, accessToken, refreshToken });
+        saveAuth({ ...stored, accessToken });
         processQueue(null, accessToken);
         original.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(original);
