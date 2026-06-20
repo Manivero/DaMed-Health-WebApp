@@ -7,7 +7,6 @@ const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
 const sendMail = require("../utils/mailer");
 
-// Stripe инициализируется один раз на уровне модуля
 let stripe;
 try {
   stripe = require("../config/stripe");
@@ -16,6 +15,8 @@ try {
 }
 
 const SLOT_DURATION_MIN = 30;
+const PAYMENT_WINDOW_MIN = 30;        // должно совпадать с expires_at у Stripe Checkout
+const HOLD_BUFFER_MIN = 5;            // запас, чтобы TTL не удалил hold раньше, чем Stripe пометит сессию expired
 
 const bookRules = [
   body("doctorId").isMongoId().withMessage("Некорректный ID врача"),
@@ -30,7 +31,7 @@ async function isSlotTaken(doctorId, date, excludeId = null) {
   const query = {
     doctorId,
     date: { $gt: from, $lt: to },
-    status: { $in: ["pending", "confirmed"] },
+    status: { $in: ["pending_payment", "pending", "confirmed"] },
   };
 
   if (excludeId) query._id = { $ne: excludeId };
@@ -40,6 +41,10 @@ async function isSlotTaken(doctorId, date, excludeId = null) {
 }
 
 // POST /api/booking/pay — Stripe Checkout
+// Слот резервируется АТОМАРНО (через уникальный индекс) ДО создания Stripe-сессии.
+// Это устраняет окно гонки между проверкой доступности и фактической оплатой:
+// если два пользователя одновременно пытаются занять слот, второй получит 409
+// мгновенно, не успев даже дойти до экрана оплаты Stripe.
 router.post("/pay", protect, bookRules, validate, async (req, res, next) => {
   if (!stripe) {
     return res.status(503).json({ message: "Платёжный сервис недоступен" });
@@ -52,59 +57,37 @@ router.post("/pay", protect, bookRules, validate, async (req, res, next) => {
     const doctor = await Doctor.findById(doctorId).lean();
     if (!doctor) return res.status(404).json({ message: "Врач не найден" });
 
+    if (!doctor.price) {
+      return res.status(400).json({
+        message: "Приём этого врача бесплатный — используйте /api/booking/confirm",
+      });
+    }
+
+    // Доп. проверка по окну ±30 мин (индекс защищает только точное совпадение даты,
+    // эта проверка — defense in depth для случая пересекающихся, но не идентичных слотов)
     if (await isSlotTaken(doctorId, slotDate)) {
       return res.status(409).json({
         message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      metadata: {
-        doctorId: doctorId.toString(),
-        date: slotDate.toISOString(),
-        userId: req.user._id.toString(),
-      },
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { name: `Приём: ${doctor.name} — ${doctor.specialty}` },
-            unit_amount: doctor.price || 5000,
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: `${process.env.CLIENT_URL}/success`,
-      cancel_url:  `${process.env.CLIENT_URL}/cancel`,
-      expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 минут на оплату
-    });
+    const holdExpiresAt = new Date(
+      Date.now() + (PAYMENT_WINDOW_MIN + HOLD_BUFFER_MIN) * 60 * 1000
+    );
 
-    res.json({ url: session.url });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// POST /api/booking/confirm — прямая запись (без оплаты)
-router.post("/confirm", protect, bookRules, validate, async (req, res, next) => {
-  try {
-    const { doctorId, date } = req.body;
-    const slotDate = new Date(date);
-
-    // Атомарная проверка: findOneAndUpdate с upsert через уникальный индекс
-    // Не делаем check-then-create (race condition), полагаемся на уникальный индекс MongoDB
-    let appt;
+    // Атомарная резервация слота: если кто-то успел создать запись на этот же
+    // doctorId+date за миллисекунды до нас — здесь вылетит код 11000.
+    let hold;
     try {
-      appt = await Appointment.create({
+      hold = await Appointment.create({
         userId:   req.user._id,
         doctorId,
         date:     slotDate,
+        status:   "pending_payment",
+        holdExpiresAt,
       });
     } catch (err) {
       if (err.code === 11000) {
-        // Уникальный индекс поймал дублирующийся слот
         return res.status(409).json({
           message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
         });
@@ -112,7 +95,82 @@ router.post("/confirm", protect, bookRules, validate, async (req, res, next) => 
       throw err;
     }
 
-    // Email отправляется асинхронно — не блокирует ответ
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        metadata: {
+          appointmentId: hold._id.toString(),
+          doctorId:      doctorId.toString(),
+          date:          slotDate.toISOString(),
+          userId:        req.user._id.toString(),
+        },
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: { name: `Приём: ${doctor.name} — ${doctor.specialty}` },
+              unit_amount: doctor.price,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${process.env.CLIENT_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url:  `${process.env.CLIENT_URL}/cancel`,
+        expires_at: Math.floor(Date.now() / 1000) + PAYMENT_WINDOW_MIN * 60,
+      });
+    } catch (stripeErr) {
+      // Stripe не смог создать сессию — освобождаем удержанный слот, чтобы он не "сгорал"
+      // впустую до истечения TTL.
+      await Appointment.deleteOne({ _id: hold._id }).catch(() => {});
+      throw stripeErr;
+    }
+
+    hold.stripeSessionId = session.id;
+    await hold.save();
+
+    res.json({ url: session.url });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/booking/confirm — прямая запись без оплаты.
+// Разрешена ТОЛЬКО для врачей с price = 0/undefined (благотворительные/промо-приёмы).
+// Платных врачей через этот эндпоинт забронировать нельзя — это не "обход оплаты",
+// а единственный путь для записи в принципе.
+router.post("/confirm", protect, bookRules, validate, async (req, res, next) => {
+  try {
+    const { doctorId, date } = req.body;
+    const slotDate = new Date(date);
+
+    const doctor = await Doctor.findById(doctorId).lean();
+    if (!doctor) return res.status(404).json({ message: "Врач не найден" });
+
+    if (doctor.price) {
+      return res.status(400).json({
+        message: "Приём этого врача платный — используйте /api/booking/pay",
+      });
+    }
+
+    let appt;
+    try {
+      appt = await Appointment.create({
+        userId:   req.user._id,
+        doctorId,
+        date:     slotDate,
+        status:   "pending",
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(409).json({
+          message: "Этот слот уже занят. Пожалуйста, выберите другое время.",
+        });
+      }
+      throw err;
+    }
+
     sendMail(
       req.user.email,
       "Запись подтверждена ✅",
@@ -121,7 +179,6 @@ router.post("/confirm", protect, bookRules, validate, async (req, res, next) => 
         timeZone: "Asia/Almaty",
       })}`
     ).catch((mailErr) => {
-      // Логируем, но не фейлим запрос
       console.error("Failed to send confirmation email:", mailErr.message);
     });
 
@@ -134,15 +191,40 @@ router.post("/confirm", protect, bookRules, validate, async (req, res, next) => 
 // GET /api/booking/my
 router.get("/my", protect, async (req, res, next) => {
   try {
-    const appointments = await Appointment.find({ userId: req.user._id })
+    const appointments = await Appointment.find({
+      userId: req.user._id,
+      status: { $ne: "pending_payment" }, // не показываем незавершённые попытки оплаты
+    })
       .populate("doctorId", "name specialty photo")
       .sort({ date: 1 })
-      .lean(); // lean() для read-only — 2-3x быстрее
+      .lean();
     res.json(appointments);
   } catch (err) {
     next(err);
   }
 });
+
+// GET /api/booking/verify/:sessionId — для экрана /success: можно сразу сказать
+// пользователю, подтвердилась ли запись, не дожидаясь письма от вебхука.
+router.get(
+  "/verify/:sessionId",
+  protect,
+  async (req, res, next) => {
+    try {
+      const appt = await Appointment.findOne({
+        stripeSessionId: req.params.sessionId,
+        userId:          req.user._id,
+      })
+        .populate("doctorId", "name specialty")
+        .lean();
+
+      if (!appt) return res.json({ status: "not_found" });
+      res.json({ status: appt.status, appointment: appt });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // GET /api/booking/slots/:doctorId
 router.get(
@@ -169,7 +251,7 @@ router.get(
       const taken = await Appointment.find({
         doctorId: req.params.doctorId,
         date: { $gte: dayStart, $lte: dayEnd },
-        status: { $in: ["pending", "confirmed"] },
+        status: { $in: ["pending_payment", "pending", "confirmed"] },
       })
         .select("date -_id")
         .lean();
@@ -198,6 +280,7 @@ router.delete("/:id", protect, async (req, res, next) => {
     }
 
     appt.status = "cancelled";
+    appt.holdExpiresAt = undefined;
     await appt.save();
     res.json(appt);
   } catch (err) {
