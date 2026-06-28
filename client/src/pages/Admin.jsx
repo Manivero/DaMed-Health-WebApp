@@ -36,12 +36,36 @@ function AdminInner() {
   const addDoctor = async (e) => {
     e.preventDefault();
     try {
-      await apiClient.post("/admin/doctors", {
-        ...form, experience:Number(form.experience)||0, price:Number(form.price)*100||5000
-      });
-      setForm({name:"",specialty:"",experience:"",price:"",bio:"",clinic:""});
-      reD(); showToast("Врач добавлен ✅");
+      const payload = { ...form, experience: Number(form.experience) || 0, price: Number(form.price) * 100 || 5000 };
+      if (editDoctor) {
+        await apiClient.put(`/admin/doctors/${editDoctor._id}`, payload);
+        showToast("Изменения сохранены ✅");
+      } else {
+        await apiClient.post("/admin/doctors", payload);
+        showToast("Врач добавлен ✅");
+      }
+      setForm({ name:"",specialty:"",experience:"",price:"",bio:"",clinic:"" });
+      setEditDoctor(null);
+      reD();
     } catch(err) { showToast("❌ "+(err.response?.data?.message||"Ошибка")); }
+  };
+
+  // Раньше editDoctor только объявлялся в state и никогда не использовался —
+  // у админа не было способа отредактировать врача через UI, хотя backend
+  // (PUT /api/admin/doctors/:id) это полностью поддерживал. price на backend
+  // хранится в центах, поэтому при загрузке в форму делим на 100 (см. /100
+  // ниже), а при сохранении addDoctor умножает обратно на 100.
+  const startEditDoctor = (d) => {
+    setEditDoctor(d);
+    setForm({
+      name: d.name || "", specialty: d.specialty || "", experience: String(d.experience ?? ""),
+      price: d.price != null ? String(d.price / 100) : "", bio: d.bio || "", clinic: d.clinic || "",
+    });
+  };
+
+  const cancelEditDoctor = () => {
+    setEditDoctor(null);
+    setForm({name:"",specialty:"",experience:"",price:"",bio:"",clinic:""});
   };
 
   const delDoctor = async (id) => {
@@ -135,7 +159,7 @@ function AdminInner() {
           {tab===1 && (
             <motion.div key="docs" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}} style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:24,alignItems:"start"}}>
               <div className="form-card" style={{position:"sticky",top:"calc(var(--nav-h) + 20px)"}}>
-                <div className="form-card-title" style={{fontSize:18}}>Добавить врача</div>
+                <div className="form-card-title" style={{fontSize:18}}>{editDoctor ? `Изменить: ${editDoctor.name}` : "Добавить врача"}</div>
                 <form onSubmit={addDoctor} style={{marginTop:12}}>
                   {[
                     {k:"name",ph:"Имя врача *",req:true},
@@ -153,7 +177,14 @@ function AdminInner() {
                       }
                     </div>
                   ))}
-                  <button type="submit" className="btn btn-primary" style={{width:"100%",justifyContent:"center"}}>+ Добавить врача</button>
+                  <div style={{display:"flex",gap:8}}>
+                    <button type="submit" className="btn btn-primary" style={{flex:1,justifyContent:"center"}}>
+                      {editDoctor ? "Сохранить изменения" : "+ Добавить врача"}
+                    </button>
+                    {editDoctor && (
+                      <button type="button" className="btn btn-ghost" onClick={cancelEditDoctor}>Отмена</button>
+                    )}
+                  </div>
                 </form>
               </div>
               <div>
@@ -173,6 +204,7 @@ function AdminInner() {
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <Link to={`/doctors/${d._id}`} className="btn btn-ghost btn-xs">Смотреть</Link>
+                        <button className="btn btn-xs" onClick={()=>startEditDoctor(d)}>Изменить</button>
                         <button className="btn btn-xs" style={{background:"#fff5f5",color:"var(--danger)",border:"1px solid #fecaca"}} onClick={()=>delDoctor(d._id)}>Удалить</button>
                       </div>
                     </div>

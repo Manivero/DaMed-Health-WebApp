@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { body } = require("express-validator");
 const Review = require("../models/Review");
 const Doctor = require("../models/Doctor");
+const Appointment = require("../models/Appointment");
 const { protect } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const mongoose = require("mongoose");
@@ -22,6 +23,25 @@ const reviewRules = [
 router.post("/", protect, reviewRules, validate, async (req, res, next) => {
   try {
     const { doctorId, rating, text } = req.body;
+
+    // КРИТИЧНО ДЛЯ ДОВЕРИЯ К РЕЙТИНГУ: раньше отзыв можно было оставить любому
+    // врачу без единого подтверждённого визита — это открывало накрутку/слив
+    // рейтинга ботами или конкурентами, а рейтинг напрямую влияет на платные
+    // записи. Требуем хотя бы одну состоявшуюся запись (confirmed/pending-без-
+    // оплаты) с датой не позже текущего момента — pending_payment (незавершённая
+    // оплата) и cancelled не считаются.
+    const hasAttendedAppointment = await Appointment.exists({
+      userId:   req.user._id,
+      doctorId,
+      status:   { $in: ["confirmed", "pending"] },
+      date:     { $lte: new Date() },
+    });
+
+    if (!hasAttendedAppointment) {
+      return res.status(403).json({
+        message: "Оставить отзыв можно только после состоявшегося приёма у этого врача",
+      });
+    }
 
     let review;
     try {

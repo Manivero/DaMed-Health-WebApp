@@ -77,12 +77,36 @@ app.use((req, res) =>
 );
 app.use(errorHandler);
 
+const mongoose = require("mongoose");
+
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () =>
   console.log(`SERVER on port ${PORT} [${process.env.NODE_ENV}] 🚀`)
 );
 
-const shutdown = () => server.close(() => process.exit(0));
+// Раньше shutdown закрывал только HTTP-сервер: соединение с MongoDB оставалось
+// открытым до того, как процесс просто убивали по таймауту оркестратора —
+// в худшем случае это резалось посреди записи. Плюс safety-таймаут: если
+// что-то (зависший запрос/соединение) не даёт закрыться штатно, процесс всё
+// равно завершится принудительно, а не зависнет вечно при `docker stop`.
+const shutdown = () => {
+  console.log("Получен сигнал остановки, завершаем работу...");
+  const forceExit = setTimeout(() => {
+    console.error("Graceful shutdown не успел за 10с — принудительный выход");
+    process.exit(1);
+  }, 10_000);
+
+  server.close(async () => {
+    try {
+      await mongoose.connection.close();
+    } catch (err) {
+      console.error("Ошибка при закрытии соединения с MongoDB:", err.message);
+    } finally {
+      clearTimeout(forceExit);
+      process.exit(0);
+    }
+  });
+};
 process.on("SIGTERM", shutdown);
 process.on("SIGINT",  shutdown); // Ctrl+C в dev
 

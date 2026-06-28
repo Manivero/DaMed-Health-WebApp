@@ -72,7 +72,16 @@ export default function Booking() {
   const handleBook = async () => {
     if (!selDay || !selTime) { showToast("Выберите дату и время"); return; }
     setSubmitting(true);
-    const payload = { doctorId: id, date: `${selDay}T${selTime}:00` };
+    // КРИТИЧНО: явно фиксируем смещение +05:00 (Asia/Almaty, без перехода на летнее время).
+    // Без offset строка "2026-06-30T09:00:00" — ISO8601 date-time без зоны, которую
+    // JS Date (и express-validator .toDate() на сервере) парсят как ЛОКАЛЬНОЕ время
+    // процесса, читая process.env.TZ. Если сервер задеплоен с TZ=UTC (типично для
+    // контейнеров/облака) — выбранные 09:00 по Алматы превращаются в 09:00 UTC =
+    // 14:00 по Алматы, т.е. запись сдвигается на 5 часов от того, что выбрал пациент.
+    // Эталонная зона приёма уже объявлена в Appointment.timezone (Asia/Almaty), но
+    // это поле никогда не использовалось при разборе даты — фиксация смещения
+    // должна происходить здесь, на входе, а не зависеть от окружения сервера.
+    const payload = { doctorId: id, date: `${selDay}T${selTime}:00+05:00` };
 
     try {
       if (isPaid) {

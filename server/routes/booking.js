@@ -18,9 +18,24 @@ const SLOT_DURATION_MIN = 30;
 const PAYMENT_WINDOW_MIN = 30;        // должно совпадать с expires_at у Stripe Checkout
 const HOLD_BUFFER_MIN = 5;            // запас, чтобы TTL не удалил hold раньше, чем Stripe пометит сессию expired
 
+// КРИТИЧНО: требуем явное смещение зоны (Z или +HH:MM) в дате приёма.
+// ISO8601 date-time БЕЗ зоны (например "2026-06-30T09:00:00") JS Date парсит как
+// ЛОКАЛЬНОЕ время процесса (зависит от process.env.TZ сервера) — это давало
+// рассинхрон до 5 часов между выбранным пациентом временем (Asia/Almaty) и
+// фактически сохранённым UTC-моментом при деплое на сервер с другим TZ.
+// strictMode: true у express-validator включает RFC3339, который требует зону.
 const bookRules = [
   body("doctorId").isMongoId().withMessage("Некорректный ID врача"),
-  body("date").isISO8601().toDate().withMessage("Некорректная дата"),
+  body("date")
+    .isISO8601({ strict: true, strictSeparator: true })
+    .withMessage("Некорректная дата")
+    .custom((value) => {
+      if (!/(Z|[+-]\d{2}:\d{2})$/.test(value)) {
+        throw new Error("Дата должна содержать явное смещение часового пояса (например +05:00)");
+      }
+      return true;
+    })
+    .toDate(),
 ];
 
 async function isSlotTaken(doctorId, date, excludeId = null) {

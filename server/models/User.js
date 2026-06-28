@@ -27,8 +27,8 @@ const userSchema = new mongoose.Schema(
     bloodType: { type: String, enum: ["A+","A-","B+","B-","AB+","AB-","O+","O-",""], default: "" },
     allergies: { type: String, default: "" },
     // Reset password
-    resetToken: { type: String },
-    resetTokenExpiry: { type: Date },
+    resetToken: { type: String, select: false },
+    resetTokenExpiry: { type: Date, select: false },
   },
   { timestamps: true }
 );
