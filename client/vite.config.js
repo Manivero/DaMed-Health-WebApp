@@ -15,10 +15,19 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor:  ["react", "react-dom"],
-          router:  ["react-router-dom"],
-          motion:  ["framer-motion"],
+        // Vite 8 использует бандлер Rolldown, которому нужна функция вместо
+        // объектной формы manualChunks (которую понимал только классический Rollup).
+        // Группировка чанков ниже сохраняет исходный смысл: vendor / router / motion.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("node_modules/react-router-dom")) return "router";
+          if (id.includes("node_modules/framer-motion")) return "motion";
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/")
+          ) {
+            return "vendor";
+          }
         },
       },
     },
