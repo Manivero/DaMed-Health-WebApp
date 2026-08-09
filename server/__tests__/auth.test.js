@@ -6,6 +6,7 @@ process.env.JWT_SECRET = "test_secret_32_characters_minimum_ok";
 process.env.JWT_REFRESH_SECRET = "test_refresh_secret_32_chars_ok_ok";
 process.env.JWT_EXPIRES_IN = "15m";
 process.env.JWT_REFRESH_EXPIRES_IN = "7d";
+process.env.CLIENT_URL = "http://localhost:5173";
 process.env.NODE_ENV = "test";
 
 const app = require("../index");

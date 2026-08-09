@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getMyProfile, updateProfile, changePassword, getMyStats } from "../services/profileService";
 import { useToast } from "../context/ToastContext";
-import { logout, getUser, saveAuth } from "../utils/auth";
+import { logoutAllDevices, getUser, saveAuth } from "../utils/auth";
 import Loader from "../components/Loader";
 
 const BLOOD_TYPES = ["","A+","A-","B+","B-","AB+","AB-","O+","O-"];
@@ -188,7 +188,7 @@ export default function Profile() {
               <div className="form-card" style={{ maxWidth:520,marginTop:20,borderColor:"#fecaca" }}>
                 <div className="form-card-title" style={{ fontSize:18,color:"var(--danger)" }}>Выход из аккаунта</div>
                 <p className="form-card-sub" style={{ marginBottom:16 }}>Вы выйдете со всех устройств</p>
-                <button className="btn btn-danger" onClick={() => { logout(); navigate("/login"); }}>
+                <button className="btn btn-danger" onClick={async () => { await logoutAllDevices(); navigate("/login"); }}>
                   Выйти из аккаунта
                 </button>
               </div>

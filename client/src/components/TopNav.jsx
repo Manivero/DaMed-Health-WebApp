@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../context/ThemeContext";
 import { useNotifications } from "../context/NotificationsContext";
 import { useFavorites } from "../context/FavoritesContext";
-import { isLoggedIn, isAdmin, logout, getUser } from "../utils/auth";
+import { isLoggedIn, isAdmin, logoutWithServer, getUser } from "../utils/auth";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 const MoonSvg = () => <svg viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" stroke="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
@@ -25,12 +25,12 @@ export default function TopNav() {
   const shortName            = user?.email?.split("@")[0] || "";
   const [showMenu, setShowMenu] = useState(false);
 
-  const handleLogout = () => { logout(); navigate("/login"); setShowMenu(false); };
+  const handleLogout = async () => { await logoutWithServer(); navigate("/login"); setShowMenu(false); };
 
   const menuItems = [
     { to: "/profile",      icon: "👤", label: t("nav.profile")       },
     { to: "/appointments", icon: "📋", label: t("nav.appointments")  },
-    { to: "/favorites",    icon: "🤍", label: t("profile.fields.name") === "Аты" ? "Таңдаулы" : t("nav.home") === "Басты бет" ? "Таңдаулы" : "Избранное" },
+    { to: "/favorites",    icon: "🤍", label: t("nav.favorites")      },
     { to: "/medcard",      icon: "🗂️", label: t("medicalCard.title") },
     ...(admin ? [{ to: "/admin", icon: "⚙️", label: t("nav.admin") }] : []),
   ];

@@ -42,3 +42,22 @@ export const logoutWithServer = async () => {
     // игнорируем — токены уже удалены локально
   }
 };
+
+// Logout со ВСЕХ устройств — отзывает все refresh-токены пользователя на сервере
+// (не только текущую сессию). Используется там, где UI явно обещает выход отовсюду.
+export const logoutAllDevices = async () => {
+  const accessToken = getAccessToken();
+  logout(); // сначала чистим локально, даже если запрос упадёт
+  try {
+    await fetch("/api/auth/logout-all", {
+      method:      "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+      },
+    });
+  } catch {
+    // игнорируем — токены уже удалены локально
+  }
+};
