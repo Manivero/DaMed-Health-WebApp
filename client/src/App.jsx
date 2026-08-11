@@ -13,6 +13,8 @@ import AIChat           from "./components/AIChat";
 import Home           from "./pages/Home";
 import Login          from "./pages/Login";
 import Register       from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword  from "./pages/ResetPassword";
 import Doctors        from "./pages/Doctors";
 import DoctorPage     from "./pages/DoctorPage";
 import Booking        from "./pages/Booking";
@@ -34,6 +36,8 @@ function AnimatedRoutes() {
         <Route path="/"               element={<Home />}         />
         <Route path="/login"          element={<Login />}        />
         <Route path="/register"       element={<Register />}     />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password"  element={<ResetPassword />}  />
         <Route path="/doctors"        element={<Doctors />}      />
         <Route path="/doctors/:id"    element={<DoctorPage />}   />
         <Route path="/consultation"   element={<Consultation />} />

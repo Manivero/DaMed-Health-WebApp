@@ -3,9 +3,12 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install:all": "npm i --prefix server && npm i --prefix client"
+    "install:all": "npm i --prefix server && npm i --prefix client",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "@playwright/test": "^1.56.1",
+    "concurrently": "^8.2.0",
+    "mongoose": "^8.0.0"
   }
 }

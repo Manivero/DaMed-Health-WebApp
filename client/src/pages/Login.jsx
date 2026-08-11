@@ -72,6 +72,9 @@ export default function Login() {
                   {showPass?"🙈":"👁️"}
                 </button>
               </div>
+              <div style={{ textAlign:"right", marginTop:6 }}>
+                <Link to="/forgot-password" style={{ fontSize:13, color:"var(--muted)" }}>Забыли пароль?</Link>
+              </div>
             </div>
             <button type="submit" className="btn btn-primary btn-full" style={{ marginTop:8,padding:"13px" }} disabled={loading}>
               {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>Входим…</> : "Войти в аккаунт →"}

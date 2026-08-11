@@ -4,3 +4,9 @@ dist/
 .DS_Store
 *.log
 coverage/
+
+# Playwright (T005)
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/blob-report/
