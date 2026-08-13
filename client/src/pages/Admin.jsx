@@ -21,7 +21,7 @@ function AdminInner() {
   const [editDoctor, setEditDoctor] = useState(null);
   const [dSearch, setDSearch] = useState("");
 
-  const fetchDocs  = useCallback(() => apiClient.get("/doctors?limit=100"), []);
+  const fetchDocs  = useCallback(() => apiClient.get("/admin/doctors?limit=100"), []);
   const fetchUsers = useCallback(() => apiClient.get("/admin/users"), []);
   const fetchAppts = useCallback(() => apiClient.get("/admin/appointments"), []);
 
@@ -69,8 +69,14 @@ function AdminInner() {
   };
 
   const delDoctor = async (id) => {
-    if(!confirm("Удалить врача? Это необратимо.")) return;
-    await apiClient.delete(`/admin/doctors/${id}`); reD(); showToast("Врач удалён");
+    if(!confirm("Скрыть врача из каталога? Позже его можно будет восстановить в этом же списке.")) return;
+    await apiClient.delete(`/admin/doctors/${id}`); reD(); showToast("Врач скрыт из каталога");
+  };
+
+  const restoreDoctor = async (id) => {
+    await apiClient.patch(`/admin/doctors/${id}/active`, { isActive: true });
+    reD();
+    showToast("Врач восстановлен ✅");
   };
 
   const changeStatus = async (id, status) => {
@@ -80,8 +86,8 @@ function AdminInner() {
 
   if (ld||lu||la) return <Loader text="Загружаем данные…"/>;
 
-  const confirmedCount = (appts||[]).filter(a=>a.status==="confirmed").length;
-  const pendingCount   = (appts||[]).filter(a=>a.status==="pending").length;
+  const confirmedCount = (appts?.appointments||[]).filter(a=>a.status==="confirmed").length;
+  const pendingCount   = (appts?.appointments||[]).filter(a=>a.status==="pending").length;
 
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}}>
@@ -107,9 +113,9 @@ function AdminInner() {
             <motion.div key="dash" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
               <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:32 }}>
                 {[
-                  { icon:"👨‍⚕️",val:(dRes?.doctors||[]).length, lbl:"Врачей",    color:"var(--teal)" },
+                  { icon:"👨‍⚕️",val:(dRes?.doctors||[]).filter(d=>d.isActive!==false).length, lbl:"Врачей",    color:"var(--teal)" },
                   { icon:"👥",val:(users||[]).length,          lbl:"Пользователей",color:"#3B82F6"  },
-                  { icon:"📋",val:(appts||[]).length,          lbl:"Всего записей",color:"#8B5CF6"  },
+                  { icon:"📋",val:(appts?.appointments||[]).length,          lbl:"Всего записей",color:"#8B5CF6"  },
                   { icon:"✅",val:confirmedCount,              lbl:"Подтверждено", color:"#22c55e"  },
                 ].map(s=>(
                   <div key={s.lbl} style={{ background:"var(--surface)",border:"1.5px solid var(--border2)",borderRadius:"var(--r-xl)",padding:"22px 18px",textAlign:"center" }}>
@@ -138,7 +144,7 @@ function AdminInner() {
               <div className="form-card">
                 <div className="form-card-title" style={{fontSize:18}}>Последние записи</div>
                 <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:8}}>
-                  {(appts||[]).slice(0,5).map(a=>(
+                  {(appts?.appointments||[]).slice(0,5).map(a=>(
                     <div key={a._id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid var(--border)"}}>
                       <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#00C9A7,#00E5C0)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:800,flexShrink:0}}>
                         {(a.userId?.email||"?")[0].toUpperCase()}
@@ -194,18 +200,25 @@ function AdminInner() {
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   {doctors.map(d=>(
-                    <div key={d._id} style={{background:"var(--surface)",border:"1.5px solid var(--border2)",borderRadius:"var(--r-lg)",padding:"14px 16px",display:"flex",alignItems:"center",gap:14}}>
+                    <div key={d._id} style={{background:"var(--surface)",border:"1.5px solid var(--border2)",borderRadius:"var(--r-lg)",padding:"14px 16px",display:"flex",alignItems:"center",gap:14, opacity: d.isActive===false ? 0.6 : 1}}>
                       <div style={{width:42,height:42,borderRadius:"50%",background:getGrad(d.name),display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:14,flexShrink:0}}>
                         {d.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,fontSize:14,color:"var(--navy)"}}>{d.name}</div>
+                        <div style={{fontWeight:700,fontSize:14,color:"var(--navy)",display:"flex",alignItems:"center",gap:8}}>
+                          {d.name}
+                          {d.isActive===false && <span className="badge badge-cancelled" style={{fontSize:10}}>Скрыт</span>}
+                        </div>
                         <div style={{fontSize:12,color:"var(--muted)"}}>{d.specialty} · {d.experience||0} лет · ⭐{d.rating?.toFixed(1)||"—"}</div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <Link to={`/doctors/${d._id}`} className="btn btn-ghost btn-xs">Смотреть</Link>
                         <button className="btn btn-xs" onClick={()=>startEditDoctor(d)}>Изменить</button>
-                        <button className="btn btn-xs" style={{background:"#fff5f5",color:"var(--danger)",border:"1px solid #fecaca"}} onClick={()=>delDoctor(d._id)}>Удалить</button>
+                        {d.isActive===false ? (
+                          <button className="btn btn-xs" style={{background:"#f0fdf4",color:"#15803d",border:"1px solid #bbf7d0"}} onClick={()=>restoreDoctor(d._id)}>Восстановить</button>
+                        ) : (
+                          <button className="btn btn-xs" style={{background:"#fff5f5",color:"var(--danger)",border:"1px solid #fecaca"}} onClick={()=>delDoctor(d._id)}>Скрыть</button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -239,7 +252,7 @@ function AdminInner() {
           {tab===3 && (
             <motion.div key="appts" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {(appts||[]).map(a=>(
+                {(appts?.appointments||[]).map(a=>(
                   <div key={a._id} style={{background:"var(--surface)",border:"1.5px solid var(--border2)",borderRadius:"var(--r-lg)",padding:"14px 18px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
                     <div style={{display:"flex",flexDirection:"column",gap:2,flex:1,minWidth:200}}>
                       <div style={{fontWeight:700,fontSize:13,color:"var(--navy)"}}>{a.userId?.email}</div>
@@ -251,7 +264,7 @@ function AdminInner() {
                     </select>
                   </div>
                 ))}
-                {(appts||[]).length===0 && <div style={{padding:"48px 0",textAlign:"center",color:"var(--muted)"}}>Записей нет</div>}
+                {(appts?.appointments||[]).length===0 && <div style={{padding:"48px 0",textAlign:"center",color:"var(--muted)"}}>Записей нет</div>}
               </div>
             </motion.div>
           )}

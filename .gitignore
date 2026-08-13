@@ -10,3 +10,6 @@ coverage/
 /playwright-report/
 /playwright/.cache/
 /blob-report/
+
+# Загруженные пользователями файлы (T011) — не коммитим, только структура/код
+server/uploads/

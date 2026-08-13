@@ -18,6 +18,37 @@ const doctorRules = [
   body("photo").optional().trim().isURL().withMessage("Фото должно быть URL"),
 ];
 
+// GET /api/admin/doctors?page=&limit=&activeOnly=
+// В отличие от публичного GET /api/doctors (который фильтрует isActive:{$ne:false}),
+// этот эндпоинт по умолчанию показывает ВСЕХ врачей, включая мягко удалённых —
+// без этого администратор не может увидеть/восстановить скрытого врача (см. T010).
+router.get(
+  "/doctors",
+  [
+    query("page").optional().isInt({ min: 1 }).toInt().default(1),
+    query("limit").optional().isInt({ min: 1, max: 100 }).toInt().default(50),
+    query("activeOnly").optional().isBoolean().toBoolean(),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const page  = req.query.page  || 1;
+      const limit = req.query.limit || 50;
+      const skip  = (page - 1) * limit;
+      const filter = req.query.activeOnly ? { isActive: { $ne: false } } : {};
+
+      const [doctors, total] = await Promise.all([
+        Doctor.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Doctor.countDocuments(filter),
+      ]);
+
+      res.json({ doctors, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 router.post("/doctors", doctorRules, validate, async (req, res, next) => {
   try {
     const { name, specialty, experience, price, photo } = req.body;
@@ -65,6 +96,30 @@ router.delete("/doctors/:id", idParamRule, validate, async (req, res, next) => {
     next(err);
   }
 });
+
+// PATCH /api/admin/doctors/:id/active — точечное включение/выключение видимости врача
+// в публичном каталоге. Тот же паттерн, что и у PATCH /appointments/:id/status ниже —
+// узкое, однозначное действие вместо перегрузки общего PUT (который и так уже валидирует
+// name/specialty как обязательные — усложнять его условной валидацией не требуется).
+router.patch(
+  "/doctors/:id/active",
+  idParamRule,
+  body("isActive").isBoolean().withMessage("isActive должно быть true/false").toBoolean(),
+  validate,
+  async (req, res, next) => {
+    try {
+      const doctor = await Doctor.findByIdAndUpdate(
+        req.params.id,
+        { isActive: req.body.isActive },
+        { new: true }
+      );
+      if (!doctor) return res.status(404).json({ message: "Врач не найден" });
+      res.json(doctor);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // GET /api/admin/users?page=1&limit=50
 router.get(

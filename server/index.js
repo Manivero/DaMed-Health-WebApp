@@ -13,14 +13,15 @@ const connectDB     = require("./config/db");
 const errorHandler  = require("./middleware/errorMiddleware");
 const { apiLimiter } = require("./middleware/rateLimiter");
 
-const authRoutes    = require("./routes/auth");
-const doctorRoutes  = require("./routes/doctor");
-const bookingRoutes = require("./routes/booking");
-const reviewRoutes  = require("./routes/review");
-const adminRoutes   = require("./routes/admin");
-const profileRoutes = require("./routes/profile");
-const webhookRoutes = require("./routes/webhook");
-const aiRoutes      = require("./routes/ai");
+const authRoutes     = require("./routes/auth");
+const doctorRoutes   = require("./routes/doctor");
+const bookingRoutes  = require("./routes/booking");
+const reviewRoutes   = require("./routes/review");
+const adminRoutes    = require("./routes/admin");
+const profileRoutes  = require("./routes/profile");
+const webhookRoutes  = require("./routes/webhook");
+const aiRoutes       = require("./routes/ai");
+const documentRoutes = require("./routes/document");
 
 const app = express();
 
@@ -62,13 +63,14 @@ if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
 
 app.use("/api", apiLimiter);
 
-app.use("/api/auth",    authRoutes);
-app.use("/api/doctors", doctorRoutes);
-app.use("/api/booking", bookingRoutes);
-app.use("/api/reviews", reviewRoutes);
-app.use("/api/admin",   adminRoutes);
-app.use("/api/profile", profileRoutes);
-app.use("/api/ai",      aiRoutes);
+app.use("/api/auth",      authRoutes);
+app.use("/api/doctors",   doctorRoutes);
+app.use("/api/booking",   bookingRoutes);
+app.use("/api/reviews",   reviewRoutes);
+app.use("/api/admin",     adminRoutes);
+app.use("/api/profile",   profileRoutes);
+app.use("/api/ai",        aiRoutes);
+app.use("/api/documents", documentRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
