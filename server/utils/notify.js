@@ -1,14 +1,15 @@
 const Notification = require("../models/Notification");
 
-// Создаём уведомление "в фоне": ошибки логируем, но не проваливаем
-// основной запрос — создание уведомления никогда не должно быть причиной
-// отказа в бронировании или другой основной операции.
-async function createNotification({ userId, type, title, body, refId, refModel }) {
+// Best-effort создание уведомления — по тому же принципу, что и sendMail() по всему проекту
+// (fire-and-forget с логированием ошибки): генерация уведомления — вторичный побочный эффект
+// брони/отмены, и не должна ронять или блокировать основной запрос, если сама запись в БД
+// по какой-то причине не удалась.
+async function notify({ userId, type, title, body, relatedAppointment }) {
   try {
-    await Notification.create({ userId, type, title, body, refId, refModel });
+    await Notification.create({ userId, type, title, body, relatedAppointment });
   } catch (err) {
-    console.error("[Notify] failed to create notification:", err.message);
+    console.error("Failed to create notification:", err.message);
   }
 }
 
-module.exports = { createNotification };
+module.exports = notify;

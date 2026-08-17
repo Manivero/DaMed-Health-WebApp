@@ -1,56 +1,46 @@
 const mongoose = require("mongoose");
 
+// Только реально событийно-управляемые типы (см. IMPLEMENTATION_LOG.md, TASK T013 — BASELINE,
+// про сознательное исключение time-based типов вроде "reminder"/"review" из этой задачи).
+const TYPES = ["booking_confirmed", "booking_cancelled"];
+
 const notificationSchema = new mongoose.Schema(
   {
     userId: {
       type:     mongoose.Schema.Types.ObjectId,
       ref:      "User",
       required: true,
-      index:    true,
     },
-    // Тип уведомления для иконки/цвета на клиенте
     type: {
-      type: String,
-      enum: ["confirm", "reminder", "review", "promo", "cancel", "system"],
+      type:     String,
+      enum:     TYPES,
       required: true,
     },
     title: {
       type:     String,
       required: true,
-      trim:     true,
-      maxlength: 200,
     },
     body: {
       type:     String,
       required: true,
-      trim:     true,
-      maxlength: 1000,
     },
     read: {
       type:    Boolean,
       default: false,
-      index:   true, // для быстрого подсчёта unread
     },
-    // Необязательная ссылка на объект (например, appointmentId для review-нотификации)
-    refId: {
+    // Необязательная ссылка на связанную запись — задел на будущее (например, клик по
+    // уведомлению мог бы вести на конкретную запись), не используется в T013 напрямую.
+    relatedAppointment: {
       type: mongoose.Schema.Types.ObjectId,
-    },
-    refModel: {
-      type: String,
-      enum: ["Appointment", "Doctor", null],
+      ref:  "Appointment",
     },
   },
   { timestamps: true }
 );
 
-// TTL: уведомления удаляются MongoDB автоматически через 30 дней после создания.
-// Предотвращает неограниченный рост коллекции без необходимости job-очистки.
-notificationSchema.index(
-  { createdAt: 1 },
-  { expireAfterSeconds: 30 * 24 * 60 * 60, name: "ttl_30d" }
-);
-
-// Составной индекс: основные запросы всегда scope по userId и сортируют по дате
 notificationSchema.index({ userId: 1, createdAt: -1 });
 
-module.exports = mongoose.model("Notification", notificationSchema);
+const Notification = mongoose.model("Notification", notificationSchema);
+Notification.TYPES = TYPES;
+
+module.exports = Notification;

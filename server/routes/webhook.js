@@ -2,6 +2,7 @@ const router      = require("express").Router();
 const Appointment = require("../models/Appointment");
 const sendMail    = require("../utils/mailer");
 const User        = require("../models/User");
+const notify       = require("../utils/notify");
 
 router.post(
   "/",
@@ -81,6 +82,14 @@ router.post(
             `Ваша запись на ${new Date(appt.date).toLocaleDateString("ru-RU")} успешно оплачена и подтверждена!`
           ).catch(console.error);
         }
+
+        notify({
+          userId,
+          type:   "booking_confirmed",
+          title:  "Оплата прошла — запись подтверждена",
+          body:   `Ваша запись на ${new Date(appt.date).toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty" })} успешно оплачена и подтверждена!`,
+          relatedAppointment: appt._id,
+        });
 
         console.log("Appointment confirmed via webhook:", appt._id);
       } catch (err) {

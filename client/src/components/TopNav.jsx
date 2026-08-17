@@ -15,7 +15,7 @@ const BellSvg = () => <svg viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="ro
 export default function TopNav() {
   const { t }                = useTranslation();
   const { dark, toggle }     = useTheme();
-  const { unread }           = useNotifications();
+  const { unread, refresh: refreshNotifications } = useNotifications();
   const { count: favCount }  = useFavorites();
   const navigate             = useNavigate();
   const logged               = isLoggedIn();
@@ -25,7 +25,7 @@ export default function TopNav() {
   const shortName            = user?.email?.split("@")[0] || "";
   const [showMenu, setShowMenu] = useState(false);
 
-  const handleLogout = async () => { await logoutWithServer(); navigate("/login"); setShowMenu(false); };
+  const handleLogout = async () => { await logoutWithServer(); refreshNotifications(); navigate("/login"); setShowMenu(false); };
 
   const menuItems = [
     { to: "/profile",      icon: "👤", label: t("nav.profile")       },

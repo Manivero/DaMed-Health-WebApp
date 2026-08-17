@@ -5,6 +5,7 @@ const User = require("../models/User");
 const Appointment = require("../models/Appointment");
 const { protect, adminOnly } = require("../middleware/auth");
 const validate = require("../middleware/validate");
+const notify = require("../utils/notify");
 
 router.use(protect, adminOnly);
 
@@ -198,6 +199,21 @@ router.patch(
         .populate("userId", "email")
         .populate("doctorId", "name");
       if (!appt) return res.status(404).json({ message: "Запись не найдена" });
+
+      // Уведомляем пациента, если админ подтвердил или отменил запись (те же 2 типа
+      // событий, что и при действиях самого пациента — см. T013).
+      if (status === "confirmed" || status === "cancelled") {
+        notify({
+          userId: appt.userId._id,
+          type:   status === "confirmed" ? "booking_confirmed" : "booking_cancelled",
+          title:  status === "confirmed" ? "Запись подтверждена" : "Запись отменена",
+          body:   status === "confirmed"
+            ? `Администратор подтвердил вашу запись к ${appt.doctorId?.name || "врачу"}`
+            : `Администратор отменил вашу запись к ${appt.doctorId?.name || "врачу"}`,
+          relatedAppointment: appt._id,
+        });
+      }
+
       res.json(appt);
     } catch (err) {
       next(err);

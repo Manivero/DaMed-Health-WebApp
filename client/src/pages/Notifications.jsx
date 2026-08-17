@@ -2,11 +2,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNotifications } from "../context/NotificationsContext";
 
 const ICONS = {
-  confirm:  { icon: "✅", bg: "#e6fdf5", color: "#0a7c55" },
-  reminder: { icon: "⏰", bg: "#fff8e6", color: "#a3650a" },
-  review:   { icon: "⭐", bg: "#f0f0ff", color: "#6366f1" },
-  promo:    { icon: "🎁", bg: "#fff0f5", color: "#be185d" },
+  booking_confirmed: { icon: "✅", bg: "#e6fdf5", color: "#0a7c55" },
+  booking_cancelled: { icon: "❌", bg: "#fef2f2", color: "#b91c1c" },
 };
+const DEFAULT_ICON = { icon: "🔔", bg: "#f0f0ff", color: "#6366f1" };
 
 function timeAgo(date) {
   const diff = Date.now() - new Date(date).getTime();
@@ -43,7 +42,7 @@ export default function Notifications() {
         )}
         <AnimatePresence>
           {notifs.map((n, i) => {
-            const style = ICONS[n.type] || ICONS.confirm;
+            const style = ICONS[n.type] || DEFAULT_ICON;
             return (
               <motion.div
                 key={n.id}

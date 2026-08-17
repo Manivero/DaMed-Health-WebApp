@@ -6,6 +6,7 @@ const validate = require("../middleware/validate");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
 const sendMail = require("../utils/mailer");
+const notify = require("../utils/notify");
 
 let stripe;
 try {
@@ -197,6 +198,16 @@ router.post("/confirm", protect, bookRules, validate, async (req, res, next) => 
       console.error("Failed to send confirmation email:", mailErr.message);
     });
 
+    notify({
+      userId: req.user._id,
+      type:   "booking_confirmed",
+      title:  "Запись подтверждена",
+      body:   `Вы записаны на приём к ${doctor.name} — ${slotDate.toLocaleDateString("ru-RU", {
+        day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Almaty",
+      })}`,
+      relatedAppointment: appt._id,
+    });
+
     res.status(201).json(appt);
   } catch (err) {
     next(err);
@@ -297,6 +308,15 @@ router.delete("/:id", protect, async (req, res, next) => {
     appt.status = "cancelled";
     appt.holdExpiresAt = undefined;
     await appt.save();
+
+    notify({
+      userId: req.user._id,
+      type:   "booking_cancelled",
+      title:  "Запись отменена",
+      body:   `Ваша запись на ${new Date(appt.date).toLocaleDateString("ru-RU", { timeZone: "Asia/Almaty" })} отменена`,
+      relatedAppointment: appt._id,
+    });
+
     res.json(appt);
   } catch (err) {
     next(err);
