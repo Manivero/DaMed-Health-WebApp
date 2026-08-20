@@ -1,4 +1,6 @@
 const router = require("express").Router();
+const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const { body, query, param } = require("express-validator");
 const Doctor = require("../models/Doctor");
 const User = require("../models/User");
@@ -6,6 +8,12 @@ const Appointment = require("../models/Appointment");
 const { protect, adminOnly } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const notify = require("../utils/notify");
+const sendMail = require("../utils/mailer");
+
+// Тот же паттерн хеширования токена, что в routes/auth.js (forgot-password) — не экспортирован
+// оттуда как общая утилита, поэтому локальная копия здесь (маленькая, самодостаточная функция;
+// выносить в shared-модуль ради одной строки — было бы рефакторингом сверх нужд этой задачи).
+const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
 router.use(protect, adminOnly);
 
@@ -116,6 +124,66 @@ router.patch(
       );
       if (!doctor) return res.status(404).json({ message: "Врач не найден" });
       res.json(doctor);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /api/admin/doctors/:id/account — создать учётную запись (User, role: "doctor") и
+// связать её с каталожным врачом (см. T016). Пароль — криптослучайный и никому не сообщается;
+// врач получает письмо со ссылкой на уже существующий flow сброса пароля (T009), где сам задаёт
+// пароль — переиспользуем готовый, уже проверенный механизм вместо изобретения нового.
+router.post(
+  "/doctors/:id/account",
+  idParamRule,
+  body("email").isEmail().withMessage("Некорректный email").normalizeEmail(),
+  validate,
+  async (req, res, next) => {
+    try {
+      const doctor = await Doctor.findById(req.params.id);
+      if (!doctor) return res.status(404).json({ message: "Врач не найден" });
+      if (doctor.userId) {
+        return res.status(400).json({ message: "У этого врача уже есть учётная запись" });
+      }
+
+      const { email } = req.body;
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(409).json({ message: "Пользователь с таким email уже существует" });
+      }
+
+      // Криптослучайный пароль — заведомо неизвестен никому, вход по нему невозможен на
+      // практике; единственный путь входа для врача — задать свой пароль по ссылке ниже.
+      const unusablePassword = crypto.randomBytes(32).toString("hex");
+      const hashedPassword = await bcrypt.hash(unusablePassword, 12);
+
+      const rawToken = crypto.randomBytes(32).toString("hex");
+
+      const user = await User.create({
+        email,
+        password:         hashedPassword,
+        role:              "doctor",
+        resetToken:        hashToken(rawToken),
+        // 24 часа, не 30 минут как в обычном forgot-password — это первичная выдача доступа,
+        // не срочный сброс скомпрометированного пароля, разумно дать врачу больше времени.
+        resetTokenExpiry:  new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+
+      doctor.userId = user._id;
+      await doctor.save();
+
+      const setPasswordUrl = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+      sendMail(
+        email,
+        "Учётная запись врача создана — DaMed",
+        `Администратор создал для вас учётную запись врача на DaMed (профиль: ${doctor.name}). ` +
+          `Чтобы задать пароль и войти, перейдите по ссылке (действует 24 часа): ${setPasswordUrl}`
+      ).catch((mailErr) => {
+        console.error("Failed to send doctor account creation email:", mailErr.message);
+      });
+
+      res.status(201).json({ message: "Учётная запись создана, письмо отправлено", doctor });
     } catch (err) {
       next(err);
     }

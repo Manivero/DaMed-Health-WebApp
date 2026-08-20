@@ -19,6 +19,18 @@ const doctorSchema = new mongoose.Schema(
     // (server/routes/doctor.js), но связанные Appointment/Review сохраняют
     // целостность ссылок — история приёмов пациента не "обнуляется".
     isActive:    { type: Boolean, default: true },
+    // Связь с учётной записью врача (User, role: "doctor") — опциональна: каталожные врачи
+    // могут существовать без аккаунта, пока админ явно не создаст его (см. T016,
+    // POST /api/admin/doctors/:id/account). unique+sparse — один User не может быть привязан
+    // сразу к двум разным Doctor одновременно, при этом множество null (ещё не привязанных)
+    // не конфликтуют друг с другом.
+    userId: {
+      type:   mongoose.Schema.Types.ObjectId,
+      ref:    "User",
+      unique: true,
+      sparse: true,
+      default: null,
+    },
   },
   { timestamps: true }
 );
