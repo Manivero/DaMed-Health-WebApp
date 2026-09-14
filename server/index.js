@@ -82,9 +82,17 @@ app.use((req, res) =>
 app.use(errorHandler);
 
 const mongoose = require("mongoose");
+const http = require("http");
+const initSignaling = require("./socket/signaling");
 
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () =>
+
+// Явный http.Server вместо app.listen(...) напрямую — нужен, чтобы Socket.io мог
+// присоединиться к ТОМУ ЖЕ серверу (см. решение T015: один процесс/порт, не отдельная служба).
+const httpServer = http.createServer(app);
+const io = initSignaling(httpServer);
+
+const server = httpServer.listen(PORT, () =>
   console.log(`SERVER on port ${PORT} [${process.env.NODE_ENV}] 🚀`)
 );
 
@@ -102,6 +110,7 @@ const shutdown = () => {
 
   server.close(async () => {
     try {
+      io.close();
       await mongoose.connection.close();
     } catch (err) {
       console.error("Ошибка при закрытии соединения с MongoDB:", err.message);
