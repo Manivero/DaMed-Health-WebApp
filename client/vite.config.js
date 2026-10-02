@@ -9,6 +9,14 @@ export default defineConfig({
         target: "http://localhost:5000",
         changeOrigin: true,
       },
+      // Сигнальный сервер WebRTC (T018) — тот же принцип, что и /api: без этого правила
+      // Socket.io-клиент в dev-режиме стучался бы в сам Vite (5173), а не в backend (5000).
+      // ws:true — обязателен для апгрейда до WebSocket-транспорта, не только long-polling.
+      "/socket.io": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   build: {
