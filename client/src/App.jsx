@@ -21,9 +21,11 @@ import Booking        from "./pages/Booking";
 import Appointments   from "./pages/Appointments";
 import Profile        from "./pages/Profile";
 import Admin          from "./pages/Admin";
+import DoctorDashboard from "./pages/DoctorDashboard";
 import Favorites      from "./pages/Favorites";
 import Notifications  from "./pages/Notifications";
 import Consultation   from "./pages/Consultation";
+import ConsultationRoom from "./pages/ConsultationRoom";
 import MedCard        from "./pages/MedCard";
 import { Success, Cancel, Download, NotFound } from "./pages/misc";
 
@@ -40,7 +42,8 @@ function AnimatedRoutes() {
         <Route path="/reset-password"  element={<ResetPassword />}  />
         <Route path="/doctors"        element={<Doctors />}      />
         <Route path="/doctors/:id"    element={<DoctorPage />}   />
-        <Route path="/consultation"   element={<Consultation />} />
+        <Route path="/consultation"   element={<ProtectedRoute><Consultation /></ProtectedRoute>} />
+        <Route path="/consultation/:appointmentId" element={<ProtectedRoute><ConsultationRoom /></ProtectedRoute>} />
         <Route path="/download"       element={<Download />}     />
         <Route path="/success"        element={<Success />}      />
         <Route path="/cancel"         element={<Cancel />}       />
@@ -50,6 +53,7 @@ function AnimatedRoutes() {
         <Route path="/appointments"   element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
         <Route path="/profile"        element={<ProtectedRoute><Profile /></ProtectedRoute>}      />
         <Route path="/admin"          element={<ProtectedRoute><Admin /></ProtectedRoute>}        />
+        <Route path="/doctor-dashboard" element={<ProtectedRoute><DoctorDashboard /></ProtectedRoute>} />
         <Route path="/favorites"      element={<ProtectedRoute><Favorites /></ProtectedRoute>}    />
         <Route path="/notifications"  element={<ProtectedRoute><Notifications /></ProtectedRoute>}/>
         <Route path="/medcard"        element={<ProtectedRoute><MedCard /></ProtectedRoute>}      />

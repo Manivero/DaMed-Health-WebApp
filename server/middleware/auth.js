@@ -24,4 +24,11 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-module.exports = { protect, adminOnly };
+const doctorOnly = (req, res, next) => {
+  if (req.user?.role !== "doctor") {
+    return res.status(403).json({ message: "Доступ только для врача" });
+  }
+  next();
+};
+
+module.exports = { protect, adminOnly, doctorOnly };

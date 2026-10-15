@@ -79,6 +79,18 @@ function AdminInner() {
     showToast("Врач восстановлен ✅");
   };
 
+  const createDoctorAccount = async (doctor) => {
+    const email = prompt(`Email для учётной записи врача «${doctor.name}»:`);
+    if (!email) return; // отменено пользователем
+    try {
+      await apiClient.post(`/admin/doctors/${doctor._id}/account`, { email });
+      reD();
+      showToast(`Учётная запись создана, письмо отправлено на ${email} ✅`);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Не удалось создать учётную запись");
+    }
+  };
+
   const changeStatus = async (id, status) => {
     await apiClient.patch(`/admin/appointments/${id}/status`,{status}); reA();
     showToast(`Статус изменён: ${STATUS_LBL[status]}`);
@@ -208,12 +220,18 @@ function AdminInner() {
                         <div style={{fontWeight:700,fontSize:14,color:"var(--navy)",display:"flex",alignItems:"center",gap:8}}>
                           {d.name}
                           {d.isActive===false && <span className="badge badge-cancelled" style={{fontSize:10}}>Скрыт</span>}
+                          {d.userId
+                            ? <span className="badge badge-confirmed" style={{fontSize:10}}>Есть учётка</span>
+                            : <span className="badge badge-done" style={{fontSize:10}}>Без учётки</span>}
                         </div>
                         <div style={{fontSize:12,color:"var(--muted)"}}>{d.specialty} · {d.experience||0} лет · ⭐{d.rating?.toFixed(1)||"—"}</div>
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <Link to={`/doctors/${d._id}`} className="btn btn-ghost btn-xs">Смотреть</Link>
                         <button className="btn btn-xs" onClick={()=>startEditDoctor(d)}>Изменить</button>
+                        {!d.userId && (
+                          <button className="btn btn-xs" style={{background:"var(--teal-l)",color:"var(--teal-d)",border:"1px solid var(--teal-mid)"}} onClick={()=>createDoctorAccount(d)}>Создать учётку</button>
+                        )}
                         {d.isActive===false ? (
                           <button className="btn btn-xs" style={{background:"#f0fdf4",color:"#15803d",border:"1px solid #bbf7d0"}} onClick={()=>restoreDoctor(d._id)}>Восстановить</button>
                         ) : (

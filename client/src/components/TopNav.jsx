@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../context/ThemeContext";
 import { useNotifications } from "../context/NotificationsContext";
 import { useFavorites } from "../context/FavoritesContext";
-import { isLoggedIn, isAdmin, logoutWithServer, getUser } from "../utils/auth";
+import { isLoggedIn, isAdmin, isDoctor, logoutWithServer, getUser } from "../utils/auth";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 const MoonSvg = () => <svg viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" stroke="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
@@ -20,6 +20,7 @@ export default function TopNav() {
   const navigate             = useNavigate();
   const logged               = isLoggedIn();
   const admin                = isAdmin();
+  const doctor                = isDoctor();
   const user                 = getUser();
   const initial              = user?.email?.[0]?.toUpperCase() || "?";
   const shortName            = user?.email?.split("@")[0] || "";
@@ -32,6 +33,7 @@ export default function TopNav() {
     { to: "/appointments", icon: "📋", label: t("nav.appointments")  },
     { to: "/favorites",    icon: "🤍", label: t("nav.favorites")      },
     { to: "/medcard",      icon: "🗂️", label: t("medicalCard.title") },
+    ...(doctor ? [{ to: "/doctor-dashboard", icon: "🩺", label: "Кабинет врача" }] : []),
     ...(admin ? [{ to: "/admin", icon: "⚙️", label: t("nav.admin") }] : []),
   ];
 
@@ -49,6 +51,7 @@ export default function TopNav() {
         <NavLink to="/doctors"        className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.doctors")}</NavLink>
         <NavLink to="/consultation"   className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("video.title")}</NavLink>
         {logged && <NavLink to="/appointments" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.appointments")}</NavLink>}
+        {doctor && <NavLink to="/doctor-dashboard" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>Кабинет врача</NavLink>}
         {admin  && <NavLink to="/admin"        className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.admin")}</NavLink>}
       </nav>
 

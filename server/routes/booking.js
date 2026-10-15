@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const { body, query, param } = require("express-validator");
 const { isValidObjectId } = require("mongoose");
-const { protect } = require("../middleware/auth");
+const { protect, doctorOnly } = require("../middleware/auth");
 const validate = require("../middleware/validate");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
@@ -222,6 +222,30 @@ router.get("/my", protect, async (req, res, next) => {
       status: { $ne: "pending_payment" }, // не показываем незавершённые попытки оплаты
     })
       .populate("doctorId", "name specialty photo")
+      .sort({ date: 1 })
+      .lean();
+    res.json(appointments);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/booking/doctor/my — записи ТЕКУЩЕГО врача (по учётной записи, не по id из клиента —
+// исключает возможность подделать чужой doctorId и увидеть чужих пациентов, см. T017/T016).
+router.get("/doctor/my", protect, doctorOnly, async (req, res, next) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user._id });
+    if (!doctor) {
+      // Роль doctor есть, но каталожный профиль не связан — не должно происходить через
+      // штатный flow T016, но не должно и падать 500, если всё же произошло.
+      return res.json([]);
+    }
+
+    const appointments = await Appointment.find({
+      doctorId: doctor._id,
+      status: { $ne: "pending_payment" },
+    })
+      .populate("userId", "email name phone")
       .sort({ date: 1 })
       .lean();
     res.json(appointments);

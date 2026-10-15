@@ -7,6 +7,7 @@ export const getUser = () => {
 
 export const isLoggedIn = () => !!getAccessToken();
 export const isAdmin    = () => getUser()?.role === "admin";
+export const isDoctor   = () => getUser()?.role === "doctor";
 
 // refreshToken больше не передаётся сюда и не хранится в localStorage — сервер
 // выставляет его как httpOnly+Secure+SameSite cookie, недоступную для JS.
