@@ -26,7 +26,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry && !original.url?.includes("/auth/refresh")) {
+    // 401 на /auth/login — не истёкшая сессия, а неверные учётные данные: пользователю надо показать сообщение
+    // сервера. Раньше такой 401 уходил в обновление токена; оно проваливалось (у гостя нет refresh-cookie), и
+    // перехватчик делал logout() + window.location.href = "/login" — страница молча перезагружалась, а
+    // пользователь не видел, что пароль неверный.
+    const isLoginRequest = original.url?.includes("/auth/login");
+    if (error.response?.status === 401 && !original._retry && !original.url?.includes("/auth/refresh") && !isLoginRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

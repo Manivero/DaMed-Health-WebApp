@@ -9,7 +9,7 @@ const LANGUAGES = [
 ];
 
 export default function LanguageSwitcher({ variant = 'dropdown' }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -32,7 +32,7 @@ export default function LanguageSwitcher({ variant = 'dropdown' }) {
   // Вариант: три кнопки рядом (для мобильной шапки или настроек)
   if (variant === 'pills') {
     return (
-      <div className="lang-pills" role="group" aria-label="Выбор языка">
+      <div className="lang-pills" role="group" aria-label={t("language.select")}>
         {LANGUAGES.map(lang => (
           <button
             key={lang.code}
@@ -56,7 +56,7 @@ export default function LanguageSwitcher({ variant = 'dropdown' }) {
         onClick={() => setOpen(v => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Язык: ${current.fullName}`}
+        aria-label={t("language.current", { name: current.fullName })}
       >
         <span className="lang-flag" aria-hidden="true">{current.flag}</span>
         <span className="lang-code">{current.label}</span>
@@ -71,7 +71,7 @@ export default function LanguageSwitcher({ variant = 'dropdown' }) {
       </button>
 
       {open && (
-        <ul className="lang-dropdown" role="listbox" aria-label="Список языков">
+        <ul className="lang-dropdown" role="listbox" aria-label={t("language.list")}>
           {LANGUAGES.map(lang => (
             <li
               key={lang.code}

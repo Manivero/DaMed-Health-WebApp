@@ -33,7 +33,7 @@ export default function TopNav() {
     { to: "/appointments", icon: "📋", label: t("nav.appointments")  },
     { to: "/favorites",    icon: "🤍", label: t("nav.favorites")      },
     { to: "/medcard",      icon: "🗂️", label: t("medicalCard.title") },
-    ...(doctor ? [{ to: "/doctor-dashboard", icon: "🩺", label: "Кабинет врача" }] : []),
+    ...(doctor ? [{ to: "/doctor-dashboard", icon: "🩺", label: t("nav.doctorDashboard") }] : []),
     ...(admin ? [{ to: "/admin", icon: "⚙️", label: t("nav.admin") }] : []),
   ];
 
@@ -51,7 +51,7 @@ export default function TopNav() {
         <NavLink to="/doctors"        className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.doctors")}</NavLink>
         <NavLink to="/consultation"   className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("video.title")}</NavLink>
         {logged && <NavLink to="/appointments" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.appointments")}</NavLink>}
-        {doctor && <NavLink to="/doctor-dashboard" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>Кабинет врача</NavLink>}
+        {doctor && <NavLink to="/doctor-dashboard" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.doctorDashboard")}</NavLink>}
         {admin  && <NavLink to="/admin"        className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>{t("nav.admin")}</NavLink>}
       </nav>
 
@@ -78,7 +78,7 @@ export default function TopNav() {
             </NavLink>
 
             {/* Уведомления */}
-            <NavLink to="/notifications" className="icon-btn" style={{ position: "relative" }} title={t("nav.notifications") || "Уведомления"}>
+            <NavLink to="/notifications" className="icon-btn" style={{ position: "relative" }} title={t("nav.notifications")}>
               <BellSvg />
               {unread > 0 && (
                 <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}

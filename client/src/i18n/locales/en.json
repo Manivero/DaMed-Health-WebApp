@@ -28,7 +28,8 @@
     "register": "Sign up",
     "logout": "Log out",
     "notifications": "Notifications",
-    "favorites": "Favourites"
+    "favorites": "Favourites",
+    "doctorDashboard": "Doctor dashboard"
   },
   "home": {
     "hero": {
@@ -261,5 +262,226 @@
     "500": "Server error",
     "network": "No internet connection",
     "goHome": "Go Home"
+  },
+  "landing": {
+    "eyebrow": "Online medicine · Kazakhstan",
+    "heroTitle": "Your health —<em>our priority</em>",
+    "heroSub": "Book the best specialists online. No queues, no phone calls — fast, convenient and reliable.",
+    "findDoctor": "Find a doctor",
+    "onlineVisit": "Online visit",
+    "trust": "More than <strong>12,000 patients</strong> trust us",
+    "trustInitials": [
+      "AS",
+      "BZ",
+      "AN",
+      "DA"
+    ],
+    "floatRating": "Average rating",
+    "floatBookingTime": "~2 min",
+    "floatBookingLabel": "Booking time",
+    "preview": {
+      "initials": "AS",
+      "name": "Aliya Seitkali",
+      "spec": "Cardiologist · 12 years",
+      "reviews": "(247 reviews)",
+      "availToday": "Available today",
+      "book": "Book an appointment →"
+    },
+    "features": {
+      "eyebrow": "Why DamuMed",
+      "title": "Next-generation medicine",
+      "sub": "We built a service that puts the patient first.",
+      "secure": {
+        "title": "Secure",
+        "text": "AES-256 encryption. Compliant with Kazakhstan Ministry of Health requirements and GDPR."
+      },
+      "fast": {
+        "title": "Fast",
+        "text": "Book in 2 minutes — no queues, no phone calls."
+      },
+      "quality": {
+        "title": "Quality",
+        "text": "Verified specialists with real reviews."
+      },
+      "online": {
+        "title": "Online consultations",
+        "text": "Video visits from anywhere in Kazakhstan."
+      },
+      "ai": {
+        "title": "AI assistant",
+        "text": "A smart helper 24/7 — picks a doctor and answers your questions."
+      },
+      "prices": {
+        "title": "Transparent prices",
+        "text": "The price is shown upfront, with no hidden fees."
+      }
+    },
+    "stats": {
+      "eyebrow": "Trusted by thousands",
+      "title": "The numbers speak for themselves",
+      "specialists": "Specialists",
+      "patients": "Patients",
+      "satisfied": "Satisfied",
+      "rating": "Average rating"
+    },
+    "cta": {
+      "title": "Ready to take care of your health?",
+      "sub": "50+ specialists are ready to see you today",
+      "choose": "Choose a doctor →"
+    }
+  },
+  "catalog": {
+    "title": "Our doctors",
+    "subtitle": "Choose a specialist and book online — no queues",
+    "searchPlaceholder": "Search by name or specialty…",
+    "filter": "Filter",
+    "minRating": "Minimum rating: {{value}}",
+    "anyRating": "Any",
+    "all": "All",
+    "resetFilters": "Reset filters",
+    "found": "Found: {{total}}",
+    "notFound": "No doctors found for your search",
+    "loadError": "Failed to load the list of doctors",
+    "prev": "← Previous",
+    "next": "Next →",
+    "sort": {
+      "rating": "By rating",
+      "price_asc": "Price ↑",
+      "price_desc": "Price ↓",
+      "experience": "By experience"
+    }
+  },
+  "specialties": {
+    "therapist": "Therapist",
+    "cardiologist": "Cardiologist",
+    "surgeon": "Surgeon",
+    "neurologist": "Neurologist",
+    "pediatrician": "Pediatrician",
+    "dentist": "Dentist",
+    "dermatologist": "Dermatologist",
+    "ophthalmologist": "Ophthalmologist"
+  },
+  "doctorCard": {
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites",
+    "online": "Online",
+    "offline": "Offline",
+    "status": "Status",
+    "visit": "Visit",
+    "details": "Details & booking →",
+    "experience_one": "{{count}} year",
+    "experience_other": "{{count}} years"
+  },
+  "chat": {
+    "online": "Online",
+    "you": "You",
+    "placeholder": "Type your question…",
+    "ariaLabel": "AI chat",
+    "welcome": "Hello! I'm the DamuMed AI assistant. I can help you choose a doctor, explain test results or answer health questions. 💊",
+    "connectionError": "Connection error. Please try again later.",
+    "suggestions": [
+      "Which doctor should I see for back pain?",
+      "How do I book an appointment?",
+      "Explain my test results",
+      "Flu vs common cold symptoms"
+    ]
+  },
+  "bottomNav": {
+    "home": "Home",
+    "doctors": "Doctors",
+    "online": "Online",
+    "appointments": "Appointments",
+    "profile": "Profile",
+    "login": "Log in"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Try refreshing the page or return to the home page.",
+    "reload": "Refresh page",
+    "home": "Go to home"
+  },
+  "loader": {
+    "loading": "Loading data…"
+  },
+  "language": {
+    "select": "Select language",
+    "current": "Language: {{name}}",
+    "list": "List of languages"
+  },
+  "meta": {
+    "title": "DaMed — Online medicine"
+  },
+  "authPage": {
+    "brandTitle": "Next-generation medicine",
+    "brandSub": "Book the best specialists online. Your health is our priority.",
+    "features": [
+      "🔒 Secure data storage",
+      "⚡ Book in 2 minutes",
+      "🤖 AI assistant 24/7",
+      "💊 50+ verified doctors"
+    ],
+    "trust": "<strong>12,000+</strong> patients trust us",
+    "or": "or",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Repeat password",
+    "passwordsMismatch": "Passwords do not match",
+    "loginFailed": "Sign-in failed",
+    "registerFailed": "Registration failed",
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your DamuMed account",
+      "forgotLink": "Forgot your password?",
+      "submit": "Sign in →",
+      "loading": "Signing in…",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Sign up for free"
+    },
+    "register": {
+      "title": "Create an account",
+      "subtitle": "Registration takes less than a minute",
+      "panelTitle": "Start taking care of your health today",
+      "panelSub": "Create an account and get access to 50+ of the best specialists in Kazakhstan.",
+      "panelFeatures": [
+        "✅ Free registration",
+        "📋 Visit history",
+        "🔔 Appointment reminders",
+        "💬 Chat with your doctor after the visit"
+      ],
+      "confirmLabel": "Confirm password",
+      "passwordMin": "Password must be at least 6 characters",
+      "submit": "Create account →",
+      "loading": "Creating…",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Sign in"
+    },
+    "strength": {
+      "weak": "Weak",
+      "medium": "Fair",
+      "strong": "Strong"
+    },
+    "forgot": {
+      "title": "Password recovery",
+      "subtitle": "Enter your email — we'll send you a link to reset your password",
+      "sent": "If this email is registered, a password recovery link has been sent to it. Check your inbox (including the Spam folder) — the link is valid for 30 minutes.",
+      "sendFailed": "Couldn't send the request. Please try again later.",
+      "submit": "Send link →",
+      "loading": "Sending…",
+      "back": "← Back to sign in"
+    },
+    "reset": {
+      "title": "New password",
+      "subtitle": "Choose a new password to sign in",
+      "brokenLink": "The link is damaged or incomplete. Please request password recovery again.",
+      "success": "Password changed successfully. You will be redirected to the sign-in page shortly…",
+      "label": "New password",
+      "confirmLabel": "Repeat password",
+      "passwordTooShort": "Password must be at least 6 characters long",
+      "invalidToken": "The token is invalid or has expired. Please request a new link.",
+      "submit": "Save new password",
+      "loading": "Saving…",
+      "requestAgain": "Request a new link",
+      "backToLogin": "Back to sign in"
+    }
   }
 }

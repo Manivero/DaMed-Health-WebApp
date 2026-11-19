@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useFavorites } from "../context/FavoritesContext";
+import { specialtyLabel } from "../utils/specialties";
 
 const GRADIENTS = [
   "linear-gradient(135deg,#00C9A7,#00E5C0)",
@@ -12,6 +14,7 @@ const GRADIENTS = [
 function getGrad(name="") { let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))&0xffff; return GRADIENTS[h%GRADIENTS.length]; }
 
 export default function DoctorCard({ doctor }) {
+  const { t } = useTranslation();
   const { isFav, toggle } = useFavorites();
   const fav      = isFav(doctor._id);
   const initials = (doctor.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
@@ -34,7 +37,7 @@ export default function DoctorCard({ doctor }) {
           cursor:"pointer", fontSize:16, backdropFilter:"blur(8px)",
           transition:"all .2s",
         }}
-        title={fav?"Убрать из избранного":"Добавить в избранное"}
+        title={fav ? t("doctorCard.removeFavorite") : t("doctorCard.addFavorite")}
       >
         {fav ? "❤️" : "🤍"}
       </motion.button>
@@ -52,9 +55,9 @@ export default function DoctorCard({ doctor }) {
         </div>
         <div style={{ flex:1,minWidth:0 }}>
           <div className="dc-name">{doctor.name}</div>
-          <div className="dc-spec">{doctor.specialty}</div>
+          <div className="dc-spec">{specialtyLabel(doctor.specialty, t)}</div>
         </div>
-        {doctor.experience > 0 && <div className="dc-badge">{doctor.experience} лет</div>}
+        {doctor.experience > 0 && <div className="dc-badge">{t("doctorCard.experience", { count: doctor.experience })}</div>}
       </div>
 
       <div className="dc-body">
@@ -64,12 +67,12 @@ export default function DoctorCard({ doctor }) {
             <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>{rating.toFixed(1)}</div>
           </div>
           <div className="dc-stat">
-            <div style={{fontSize:12,fontWeight:700,color:online?"#22c55e":"var(--muted)"}}>{online?"● Онлайн":"○ Офлайн"}</div>
-            <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>Статус</div>
+            <div style={{fontSize:12,fontWeight:700,color:online?"#22c55e":"var(--muted)"}}>{online ? `● ${t("doctorCard.online")}` : `○ ${t("doctorCard.offline")}`}</div>
+            <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>{t("doctorCard.status")}</div>
           </div>
           <div className="dc-stat">
             <div style={{fontSize:13,fontWeight:800,color:"var(--teal)"}}>{doctor.price?`$${(doctor.price/100).toFixed(0)}`:"—"}</div>
-            <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>Приём</div>
+            <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>{t("doctorCard.visit")}</div>
           </div>
         </div>
         <div style={{
@@ -80,7 +83,7 @@ export default function DoctorCard({ doctor }) {
           onMouseEnter={e=>{e.currentTarget.style.background="var(--teal)";e.currentTarget.style.color="#fff";}}
           onMouseLeave={e=>{e.currentTarget.style.background="var(--teal-l)";e.currentTarget.style.color="var(--teal-d)";}}
         >
-          Подробнее и запись →
+          {t("doctorCard.details")}
         </div>
       </div>
     </div>

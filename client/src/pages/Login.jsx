@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation, Trans } from "react-i18next";
+import { errorText } from "../utils/errorText";
 import { useAuth } from "../hooks/useAuth";
 
+const TRUST_GRADIENTS = ["#00C9A7,#00E5C0","#3B82F6,#60a5fa","#8B5CF6,#a78bfa"];
+
 export default function Login() {
+  const { t } = useTranslation();
+  const features = t("authPage.features", { returnObjects: true });
+  const trustInitials = t("landing.trustInitials", { returnObjects: true });
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -26,20 +33,20 @@ export default function Login() {
             </div>
             <span style={{ fontFamily:"var(--font-head)",fontSize:22,color:"#fff" }}>Damu<span style={{color:"var(--teal)"}}>Med</span></span>
           </div>
-          <h1 className="auth-left-title">Медицина нового поколения</h1>
-          <p className="auth-left-sub">Записывайтесь к лучшим специалистам онлайн. Ваше здоровье — наш приоритет.</p>
+          <h1 className="auth-left-title">{t("authPage.brandTitle")}</h1>
+          <p className="auth-left-sub">{t("authPage.brandSub")}</p>
           <div className="auth-features">
-            {["🔒 Безопасное хранение данных","⚡ Запись за 2 минуты","🤖 AI-ассистент 24/7","💊 50+ проверенных врачей"].map(f => (
+            {(Array.isArray(features) ? features : []).map(f => (
               <div key={f} className="auth-feature-item">{f}</div>
             ))}
           </div>
           <div className="auth-trust">
             <div className="trust-avatars">
-              {[["АС","#00C9A7,#00E5C0"],["БЖ","#3B82F6,#60a5fa"],["АН","#8B5CF6,#a78bfa"]].map(([a,g])=>(
+              {TRUST_GRADIENTS.map((g, i) => [(Array.isArray(trustInitials) ? trustInitials : [])[i], g]).map(([a,g])=>(
                 <div key={a} className="trust-av" style={{background:`linear-gradient(135deg,${g})`}}>{a}</div>
               ))}
             </div>
-            <span className="trust-text"><strong>12 000+</strong> пациентов доверяют нам</span>
+            <span className="trust-text"><Trans i18nKey="authPage.trust" components={{ strong: <strong /> }} /></span>
           </div>
         </div>
       </motion.div>
@@ -48,11 +55,11 @@ export default function Login() {
       <motion.div className="auth-right" initial={{ opacity:0,y:20 }} animate={{ opacity:1,y:0 }} transition={{ duration:.4, delay:.1 }}>
         <div className="auth-form-wrap">
           <div style={{ marginBottom:32 }}>
-            <h2 className="auth-title">Добро пожаловать</h2>
-            <p className="auth-subtitle">Войдите в свой аккаунт DamuMed</p>
+            <h2 className="auth-title">{t("authPage.login.title")}</h2>
+            <p className="auth-subtitle">{t("authPage.login.subtitle")}</p>
           </div>
 
-          {error && <div className="alert alert-error" style={{ marginBottom:20 }}>{error}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom:20 }}>{errorText(error, t)}</div>}
 
           <form onSubmit={onSubmit} noValidate>
             <div className="field">
@@ -61,7 +68,7 @@ export default function Login() {
                 value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required />
             </div>
             <div className="field">
-              <label htmlFor="pass">Пароль</label>
+              <label htmlFor="pass">{t("authPage.passwordLabel")}</label>
               <div style={{ position:"relative" }}>
                 <input id="pass" type={showPass?"text":"password"} placeholder="••••••••"
                   value={password} onChange={e=>setPassword(e.target.value)}
@@ -73,16 +80,16 @@ export default function Login() {
                 </button>
               </div>
               <div style={{ textAlign:"right", marginTop:6 }}>
-                <Link to="/forgot-password" style={{ fontSize:13, color:"var(--muted)" }}>Забыли пароль?</Link>
+                <Link to="/forgot-password" style={{ fontSize:13, color:"var(--muted)" }}>{t("authPage.login.forgotLink")}</Link>
               </div>
             </div>
             <button type="submit" className="btn btn-primary btn-full" style={{ marginTop:8,padding:"13px" }} disabled={loading}>
-              {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>Входим…</> : "Войти в аккаунт →"}
+              {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>{t("authPage.login.loading")}</> : t("authPage.login.submit")}
             </button>
           </form>
 
-          <div className="auth-divider"><span>или</span></div>
-          <p className="auth-switch">Нет аккаунта? <Link to="/register">Зарегистрироваться бесплатно</Link></p>
+          <div className="auth-divider"><span>{t("authPage.or")}</span></div>
+          <p className="auth-switch">{t("authPage.login.noAccount")} <Link to="/register">{t("authPage.login.registerLink")}</Link></p>
         </div>
       </motion.div>
     </div>

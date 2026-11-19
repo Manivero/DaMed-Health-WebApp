@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { errorText } from "../utils/errorText";
 import { resetPassword } from "../services/authService";
 
 export default function ResetPassword() {
+  const { t } = useTranslation();
   const [params]  = useSearchParams();
   const navigate  = useNavigate();
   const token     = params.get("token")  || "";
@@ -22,11 +25,11 @@ export default function ResetPassword() {
     setError("");
 
     if (password.length < 6) {
-      setError("Пароль должен быть не короче 6 символов");
+      setError({ key: "authPage.reset.passwordTooShort" });
       return;
     }
     if (password !== confirm) {
-      setError("Пароли не совпадают");
+      setError({ key: "authPage.passwordsMismatch" });
       return;
     }
 
@@ -36,7 +39,7 @@ export default function ResetPassword() {
       setSuccess(true);
       setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
-      setError(err.response?.data?.message || "Токен недействителен или истёк. Запросите ссылку заново.");
+      setError(err.response?.data?.message || { key: "authPage.reset.invalidToken" });
     } finally {
       setLoading(false);
     }
@@ -52,53 +55,53 @@ export default function ResetPassword() {
             </div>
             <span style={{ fontFamily:"var(--font-head)",fontSize:22,color:"#fff" }}>Damu<span style={{color:"var(--teal)"}}>Med</span></span>
           </div>
-          <h1 className="auth-left-title">Медицина нового поколения</h1>
-          <p className="auth-left-sub">Записывайтесь к лучшим специалистам онлайн. Ваше здоровье — наш приоритет.</p>
+          <h1 className="auth-left-title">{t("authPage.brandTitle")}</h1>
+          <p className="auth-left-sub">{t("authPage.brandSub")}</p>
         </div>
       </motion.div>
 
       <motion.div className="auth-right" initial={{ opacity:0,y:20 }} animate={{ opacity:1,y:0 }} transition={{ duration:.4, delay:.1 }}>
         <div className="auth-form-wrap">
           <div style={{ marginBottom:32 }}>
-            <h2 className="auth-title">Новый пароль</h2>
-            <p className="auth-subtitle">Придумайте новый пароль для входа</p>
+            <h2 className="auth-title">{t("authPage.reset.title")}</h2>
+            <p className="auth-subtitle">{t("authPage.reset.subtitle")}</p>
           </div>
 
           {missingParams && !success && (
             <div className="alert alert-error" style={{ marginBottom:20 }}>
-              Ссылка повреждена или неполная. Запросите восстановление пароля заново.
+              {t("authPage.reset.brokenLink")}
             </div>
           )}
-          {error && <div className="alert alert-error" style={{ marginBottom:20 }}>{error}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom:20 }}>{errorText(error, t)}</div>}
 
           {success ? (
             <div className="alert alert-success" style={{ marginBottom:20 }}>
-              Пароль успешно изменён. Сейчас вы будете перенаправлены на страницу входа…
+              {t("authPage.reset.success")}
             </div>
           ) : (
             <form onSubmit={onSubmit} noValidate>
               <div className="field">
-                <label htmlFor="pass">Новый пароль</label>
-                <input id="pass" type="password" placeholder="Минимум 6 символов"
+                <label htmlFor="pass">{t("authPage.reset.label")}</label>
+                <input id="pass" type="password" placeholder={t("authPage.passwordPlaceholder")}
                   value={password} onChange={e=>setPassword(e.target.value)}
                   autoComplete="new-password" required disabled={missingParams} />
               </div>
               <div className="field">
-                <label htmlFor="conf">Повторите пароль</label>
-                <input id="conf" type="password" placeholder="Повторите пароль"
+                <label htmlFor="conf">{t("authPage.reset.confirmLabel")}</label>
+                <input id="conf" type="password" placeholder={t("authPage.confirmPlaceholder")}
                   value={confirm} onChange={e=>setConfirm(e.target.value)}
                   autoComplete="new-password" required disabled={missingParams} />
               </div>
               <button type="submit" className="btn btn-primary btn-full" style={{ marginTop:8,padding:"13px" }}
                 disabled={loading || missingParams}>
-                {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>Сохраняем…</> : "Сохранить новый пароль"}
+                {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>{t("authPage.reset.loading")}</> : t("authPage.reset.submit")}
               </button>
             </form>
           )}
 
-          <div className="auth-divider"><span>или</span></div>
+          <div className="auth-divider"><span>{t("authPage.or")}</span></div>
           <p className="auth-switch">
-            <Link to="/forgot-password">Запросить ссылку заново</Link> · <Link to="/login">Вернуться ко входу</Link>
+            <Link to="/forgot-password">{t("authPage.reset.requestAgain")}</Link> · <Link to="/login">{t("authPage.reset.backToLogin")}</Link>
           </p>
         </div>
       </motion.div>

@@ -18,7 +18,7 @@ export function useAuth() {
       refreshNotifications(); // гость → пользователь: подтягиваем реальные уведомления сразу
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Ошибка входа");
+      setError(err.response?.data?.message || { key: "authPage.loginFailed" });
     } finally { setLoading(false); }
   }, [navigate, refreshNotifications]);
 
@@ -30,7 +30,7 @@ export function useAuth() {
       refreshNotifications();
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Ошибка регистрации");
+      setError(err.response?.data?.message || { key: "authPage.registerFailed" });
     } finally { setLoading(false); }
   }, [navigate, refreshNotifications]);
 

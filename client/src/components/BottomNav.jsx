@@ -1,21 +1,23 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useNotifications } from "../context/NotificationsContext";
 import { isLoggedIn } from "../utils/auth";
 
 export default function BottomNav() {
+  const { t } = useTranslation();
   const logged   = isLoggedIn();
   const { unread } = useNotifications();
 
   const links = [
-    { to:"/",            end:true,  icon:"🏠", label:"Главная" },
-    { to:"/doctors",     end:false, icon:"👨‍⚕️", label:"Врачи"   },
-    { to:"/consultation",end:false, icon:"🎥", label:"Онлайн"  },
-    ...(logged ? [{ to:"/appointments",end:false,icon:"📋",label:"Записи" }] : []),
+    { to:"/",            end:true,  icon:"🏠", label:t("bottomNav.home") },
+    { to:"/doctors",     end:false, icon:"👨‍⚕️", label:t("bottomNav.doctors") },
+    { to:"/consultation",end:false, icon:"🎥", label:t("bottomNav.online") },
+    ...(logged ? [{ to:"/appointments",end:false,icon:"📋",label:t("bottomNav.appointments") }] : []),
     {
       to: logged ? "/profile" : "/login",
       end: false,
       icon: logged ? "👤" : "🔑",
-      label: logged ? "Профиль" : "Войти",
+      label: logged ? t("bottomNav.profile") : t("bottomNav.login"),
       badge: logged && unread > 0 ? unread : 0,
     },
   ];

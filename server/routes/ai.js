@@ -8,9 +8,23 @@ const MAX_MESSAGES = 20;
 const MAX_CONTENT_LENGTH = 2000;
 const MAX_TOTAL_CHARS = 20_000; // защита от огромных history
 
+// Язык ответа ассистента = язык интерфейса пользователя (раньше промпт жёстко требовал русский,
+// и англоязычный пользователь получал русские ответы). Клиент присылает код языка, но в промпт
+// попадает ТОЛЬКО значение из этого белого списка — сама клиентская строка не подставляется
+// никогда (иначе это канал prompt injection). Коды — внутренние коды приложения (казахский — "kz").
+const REPLY_LANGUAGE = {
+  ru: "по-русски",
+  en: "по-английски (in English)",
+  kz: "по-казахски (қазақ тілінде)",
+};
+const DEFAULT_LANG = "ru";
+
 router.post("/chat", protect, aiLimiter, async (req, res, next) => {
   try {
     const { messages } = req.body;
+    const lang = typeof req.body.lang === "string" && Object.hasOwn(REPLY_LANGUAGE, req.body.lang)
+      ? req.body.lang
+      : DEFAULT_LANG;
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ message: "messages обязательны" });
     }
@@ -55,7 +69,7 @@ router.post("/chat", protect, aiLimiter, async (req, res, next) => {
           max_tokens: 1000,
           system:
             "Ты AI-ассистент медицинского сервиса DamuMed (Казахстан). " +
-            "Отвечай по-русски, кратко и по делу. Помогай пациентам выбрать специалиста, " +
+            `Отвечай ${REPLY_LANGUAGE[lang]}, кратко и по делу. Помогай пациентам выбрать специалиста, ` +
             "объясняй медицинские термины, давай общие рекомендации. " +
             "Всегда рекомендуй обратиться к врачу для постановки диагноза. " +
             "Никогда не ставь диагнозы и не назначай лечение.",

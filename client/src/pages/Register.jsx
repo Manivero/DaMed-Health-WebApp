@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { errorText } from "../utils/errorText";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Register() {
+  const { t } = useTranslation();
+  const panelFeatures = t("authPage.register.panelFeatures", { returnObjects: true });
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [confirm,  setConfirm]  = useState("");
@@ -11,13 +15,13 @@ export default function Register() {
   const { handleRegister, loading, error, setError } = useAuth();
 
   const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3;
-  const strengthLabel = ["","Слабый","Средний","Надёжный"][strength];
+  const strengthLabel = strength ? t(`authPage.strength.${["","weak","medium","strong"][strength]}`) : "";
   const strengthColor = ["","#ef4444","#f59e0b","#22c55e"][strength];
 
   const onSubmit = (e) => {
     e.preventDefault();
-    if (password !== confirm) return setError("Пароли не совпадают");
-    if (password.length < 6) return setError("Пароль минимум 6 символов");
+    if (password !== confirm) return setError({ key: "authPage.passwordsMismatch" });
+    if (password.length < 6) return setError({ key: "authPage.register.passwordMin" });
     handleRegister(email, password);
   };
 
@@ -31,10 +35,10 @@ export default function Register() {
             </div>
             <span style={{ fontFamily:"var(--font-head)",fontSize:22,color:"#fff" }}>Damu<span style={{color:"var(--teal)"}}>Med</span></span>
           </div>
-          <h1 className="auth-left-title">Начните заботиться о здоровье сегодня</h1>
-          <p className="auth-left-sub">Создайте аккаунт и получите доступ к 50+ лучшим специалистам Казахстана.</p>
+          <h1 className="auth-left-title">{t("authPage.register.panelTitle")}</h1>
+          <p className="auth-left-sub">{t("authPage.register.panelSub")}</p>
           <div className="auth-features">
-            {["✅ Бесплатная регистрация","📋 История визитов","🔔 Напоминания о записях","💬 Чат с врачом после приёма"].map(f=>(
+            {(Array.isArray(panelFeatures) ? panelFeatures : []).map(f=>(
               <div key={f} className="auth-feature-item">{f}</div>
             ))}
           </div>
@@ -44,10 +48,10 @@ export default function Register() {
       <motion.div className="auth-right" initial={{ opacity:0,y:20 }} animate={{ opacity:1,y:0 }} transition={{ duration:.4,delay:.1 }}>
         <div className="auth-form-wrap">
           <div style={{ marginBottom:28 }}>
-            <h2 className="auth-title">Создать аккаунт</h2>
-            <p className="auth-subtitle">Регистрация займёт меньше минуты</p>
+            <h2 className="auth-title">{t("authPage.register.title")}</h2>
+            <p className="auth-subtitle">{t("authPage.register.subtitle")}</p>
           </div>
-          {error && <div className="alert alert-error" style={{ marginBottom:18 }}>{error}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom:18 }}>{errorText(error, t)}</div>}
           <form onSubmit={onSubmit} noValidate>
             <div className="field">
               <label htmlFor="email">Email</label>
@@ -55,9 +59,9 @@ export default function Register() {
                 value={email} onChange={e=>setEmail(e.target.value)} required />
             </div>
             <div className="field">
-              <label htmlFor="pass">Пароль</label>
+              <label htmlFor="pass">{t("authPage.passwordLabel")}</label>
               <div style={{ position:"relative" }}>
-                <input id="pass" type={showPass?"text":"password"} placeholder="Минимум 6 символов"
+                <input id="pass" type={showPass?"text":"password"} placeholder={t("authPage.passwordPlaceholder")}
                   value={password} onChange={e=>setPassword(e.target.value)} required style={{ paddingRight:44 }}/>
                 <button type="button" onClick={()=>setShowPass(s=>!s)}
                   style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",
@@ -75,20 +79,20 @@ export default function Register() {
               )}
             </div>
             <div className="field">
-              <label htmlFor="conf">Подтвердите пароль</label>
-              <input id="conf" type="password" placeholder="Повторите пароль"
+              <label htmlFor="conf">{t("authPage.register.confirmLabel")}</label>
+              <input id="conf" type="password" placeholder={t("authPage.confirmPlaceholder")}
                 value={confirm} onChange={e=>setConfirm(e.target.value)} required
                 style={{ borderColor: confirm && confirm !== password ? "var(--danger)" : "" }} />
               {confirm && confirm !== password && (
-                <span style={{fontSize:12,color:"var(--danger)",marginTop:4,display:"block"}}>Пароли не совпадают</span>
+                <span style={{fontSize:12,color:"var(--danger)",marginTop:4,display:"block"}}>{t("authPage.passwordsMismatch")}</span>
               )}
             </div>
             <button type="submit" className="btn btn-primary btn-full" style={{ marginTop:4,padding:"13px" }} disabled={loading}>
-              {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>Создаём…</> : "Создать аккаунт →"}
+              {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>{t("authPage.register.loading")}</> : t("authPage.register.submit")}
             </button>
           </form>
-          <div className="auth-divider"><span>или</span></div>
-          <p className="auth-switch">Уже есть аккаунт? <Link to="/login">Войти</Link></p>
+          <div className="auth-divider"><span>{t("authPage.or")}</span></div>
+          <p className="auth-switch">{t("authPage.register.haveAccount")} <Link to="/login">{t("authPage.register.loginLink")}</Link></p>
         </div>
       </motion.div>
     </div>

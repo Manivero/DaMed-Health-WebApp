@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { errorText } from "../utils/errorText";
 import { forgotPassword } from "../services/authService";
 
 export default function ForgotPassword() {
+  const { t } = useTranslation();
+  const features = t("authPage.features", { returnObjects: true });
   const [email, setEmail]     = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent]       = useState(false);
@@ -20,7 +24,7 @@ export default function ForgotPassword() {
       await forgotPassword(email);
       setSent(true);
     } catch {
-      setError("Не удалось отправить запрос. Попробуйте ещё раз позже.");
+      setError({ key: "authPage.forgot.sendFailed" });
     } finally {
       setLoading(false);
     }
@@ -36,10 +40,10 @@ export default function ForgotPassword() {
             </div>
             <span style={{ fontFamily:"var(--font-head)",fontSize:22,color:"#fff" }}>Damu<span style={{color:"var(--teal)"}}>Med</span></span>
           </div>
-          <h1 className="auth-left-title">Медицина нового поколения</h1>
-          <p className="auth-left-sub">Записывайтесь к лучшим специалистам онлайн. Ваше здоровье — наш приоритет.</p>
+          <h1 className="auth-left-title">{t("authPage.brandTitle")}</h1>
+          <p className="auth-left-sub">{t("authPage.brandSub")}</p>
           <div className="auth-features">
-            {["🔒 Безопасное хранение данных","⚡ Запись за 2 минуты","🤖 AI-ассистент 24/7","💊 50+ проверенных врачей"].map(f => (
+            {(Array.isArray(features) ? features : []).map(f => (
               <div key={f} className="auth-feature-item">{f}</div>
             ))}
           </div>
@@ -49,16 +53,15 @@ export default function ForgotPassword() {
       <motion.div className="auth-right" initial={{ opacity:0,y:20 }} animate={{ opacity:1,y:0 }} transition={{ duration:.4, delay:.1 }}>
         <div className="auth-form-wrap">
           <div style={{ marginBottom:32 }}>
-            <h2 className="auth-title">Восстановление пароля</h2>
-            <p className="auth-subtitle">Укажите email — пришлём ссылку для сброса пароля</p>
+            <h2 className="auth-title">{t("authPage.forgot.title")}</h2>
+            <p className="auth-subtitle">{t("authPage.forgot.subtitle")}</p>
           </div>
 
-          {error && <div className="alert alert-error" style={{ marginBottom:20 }}>{error}</div>}
+          {error && <div className="alert alert-error" style={{ marginBottom:20 }}>{errorText(error, t)}</div>}
 
           {sent ? (
             <div className="alert alert-success" style={{ marginBottom:20 }}>
-              Если такой email зарегистрирован, на него отправлена ссылка для восстановления пароля.
-              Проверьте почту (в том числе папку «Спам») — ссылка действует 30 минут.
+              {t("authPage.forgot.sent")}
             </div>
           ) : (
             <form onSubmit={onSubmit} noValidate>
@@ -68,13 +71,13 @@ export default function ForgotPassword() {
                   value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required />
               </div>
               <button type="submit" className="btn btn-primary btn-full" style={{ marginTop:8,padding:"13px" }} disabled={loading}>
-                {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>Отправляем…</> : "Отправить ссылку →"}
+                {loading ? <><span className="loader-ring" style={{width:18,height:18,borderWidth:2,marginRight:8}}/>{t("authPage.forgot.loading")}</> : t("authPage.forgot.submit")}
               </button>
             </form>
           )}
 
-          <div className="auth-divider"><span>или</span></div>
-          <p className="auth-switch"><Link to="/login">← Вернуться ко входу</Link></p>
+          <div className="auth-divider"><span>{t("authPage.or")}</span></div>
+          <p className="auth-switch"><Link to="/login">{t("authPage.forgot.back")}</Link></p>
         </div>
       </motion.div>
     </div>

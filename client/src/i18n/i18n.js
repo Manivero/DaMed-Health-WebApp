@@ -28,4 +28,22 @@ i18n
     },
   });
 
+// Основной код языка без региона и без «технических» вариантов: 'en-US' → 'en'. Единая точка для
+// всего, что передаёт язык наружу (например, серверу AI-ассистента), чтобы не зависеть от того, что
+// именно вернул детектор (i18n.language может быть и 'en-US').
+export const currentLang = () => (i18n.resolvedLanguage || i18n.language || 'ru').split('-')[0];
+
+// Язык документа и заголовок вкладки следуют языку интерфейса: <html lang> нужен скринридерам,
+// переводчику браузера и подбору шрифтов — иначе английский интерфейс объявлял бы себя русским.
+// Код казахского в приложении — 'kz' (нестандартный, ISO — 'kk', см. TD-018); для HTML-атрибута
+// отдаём корректный BCP-47 'kk', не меняя внутренний код и сохранённые у пользователей значения.
+const HTML_LANG = { ru: 'ru', en: 'en', kz: 'kk' };
+const applyDocumentLanguage = () => {
+  const lng = currentLang();
+  document.documentElement.lang = HTML_LANG[lng] || lng;
+  document.title = i18n.t('meta.title');
+};
+i18n.on('languageChanged', applyDocumentLanguage);
+applyDocumentLanguage();
+
 export default i18n;

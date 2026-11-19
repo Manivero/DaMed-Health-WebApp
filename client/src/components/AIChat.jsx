@@ -1,21 +1,16 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { currentLang } from "../i18n/i18n";
 import apiClient from "../services/apiClient";
 
-const SUGGESTIONS = [
-  "Какой врач нужен при болях в спине?",
-  "Как записаться на приём?",
-  "Расшифруй мои анализы",
-  "Симптомы гриппа vs ОРВИ",
-];
-
 export default function AIChat() {
+  const { t } = useTranslation();
   const [open,     setOpen]     = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role:    "assistant",
-      content: "Здравствуйте! Я AI-ассистент DamuMed. Помогу выбрать врача, расшифрую анализы или отвечу на вопросы о здоровье. 💊",
-    },
-  ]);
+  // Приветствие — метка, а не строка в состоянии: текст берётся из словаря при отрисовке и отправке,
+  // поэтому он меняет язык вместе с интерфейсом. В историю для сервера оно попадает как и раньше.
+  const [messages, setMessages] = useState([{ role: "assistant", welcome: true }]);
+  const suggestions = t("chat.suggestions", { returnObjects: true });
+  const textOf = (m) => (m.welcome ? t("chat.welcome") : m.content);
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
@@ -34,7 +29,8 @@ export default function AIChat() {
     try {
       // Запрос идёт через наш сервер — ключ Anthropic API остаётся на бэкенде
       const res = await apiClient.post("/ai/chat", {
-        messages: history.map((m) => ({ role: m.role, content: m.content })),
+        messages: history.map((m) => ({ role: m.role, content: textOf(m) })),
+        lang: currentLang(), // язык ответа ассистента = язык интерфейса (сервер принимает только значения из белого списка)
       });
       setMessages((prev) => [
         ...prev,
@@ -42,7 +38,7 @@ export default function AIChat() {
       ]);
     } catch (err) {
       const errMsg =
-        err.response?.data?.message || "Ошибка соединения. Попробуйте позже.";
+        err.response?.data?.message || t("chat.connectionError");
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: errMsg },
@@ -68,7 +64,7 @@ export default function AIChat() {
           </div>
           <div className="chat-head-info">
             <div className="chat-head-name">DamuMed AI</div>
-            <div className="chat-online">Онлайн</div>
+            <div className="chat-online">{t("chat.online")}</div>
           </div>
           <button className="chat-x" onClick={() => setOpen(false)}>✕</button>
         </div>
@@ -76,8 +72,8 @@ export default function AIChat() {
         <div className="chat-msgs">
           {messages.map((m, i) => (
             <div key={i} className={"msg " + m.role}>
-              <div className={"m-av " + m.role}>{m.role === "assistant" ? "AI" : "Вы"}</div>
-              <div className="m-bub">{m.content}</div>
+              <div className={"m-av " + m.role}>{m.role === "assistant" ? "AI" : t("chat.you")}</div>
+              <div className="m-bub">{textOf(m)}</div>
             </div>
           ))}
           {loading && (
@@ -93,7 +89,7 @@ export default function AIChat() {
 
         {messages.length <= 1 && (
           <div className="chat-chips">
-            {SUGGESTIONS.map((s) => (
+            {(Array.isArray(suggestions) ? suggestions : []).map((s) => (
               <button key={s} className="c-chip" onClick={() => send(s)}>{s}</button>
             ))}
           </div>
@@ -102,7 +98,7 @@ export default function AIChat() {
         <div className="chat-input-area">
           <textarea
             className="chat-ta"
-            placeholder="Напишите вопрос…"
+            placeholder={t("chat.placeholder")}
             rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -118,7 +114,7 @@ export default function AIChat() {
         </div>
       </div>
 
-      <button className="fab-btn" onClick={() => setOpen((o) => !o)} aria-label="AI чат">
+      <button className="fab-btn" onClick={() => setOpen((o) => !o)} aria-label={t("chat.ariaLabel")}>
         <svg viewBox="0 0 24 24"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1 .78-4.88A2.51 2.51 0 0 1 9 14.62V8.5A2.5 2.5 0 0 1 6.54 5 2.5 2.5 0 0 1 9.5 2zm4.5 0h1v1.54A2.5 2.5 0 1 1 14.5 8.5v7.12a2.51 2.51 0 0 1 1 .38 2.5 2.5 0 1 1-3.04 3.54A2.5 2.5 0 0 1 12 19.5v-15A2.5 2.5 0 0 1 14 2z"/></svg>
         <span className="fab-pulse"/>
       </button>
